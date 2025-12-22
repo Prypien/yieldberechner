@@ -98,6 +98,11 @@ body {
   box-shadow: 0 0 0 3px rgba(31, 78, 216, 0.15);
 }
 
+.input-error {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 3px rgba(180, 35, 42, 0.15);
+}
+
 .input-large {
   min-width: 260px;
   font-size: 17px;
@@ -159,6 +164,17 @@ select.input {
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+
+.scenario-error {
+  justify-content: flex-end;
+  min-width: 200px;
+}
+
+.error-text {
+  color: var(--danger);
+  font-size: 12px;
+  min-height: 18px;
 }
 
 .plant-toggle {
