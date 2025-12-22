@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chip Yield Calculator – Overview</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="app-header-inner">
+      <div class="header-left">
+        <div class="scenario-block">
+          <label class="label" for="scenario-name">Szenario</label>
+          <input id="scenario-name" class="input input-large" type="text" placeholder="z. B. Baseline 2025" />
+        </div>
+        <div class="scenario-years">
+          <div class="field">
+            <label class="label" for="scenario-start">Startjahr</label>
+            <input id="scenario-start" class="input" type="number" />
+          </div>
+          <div class="field">
+            <label class="label" for="scenario-end">Endjahr</label>
+            <input id="scenario-end" class="input" type="number" />
+          </div>
+        </div>
+      </div>
+      <div class="header-right">
+        <div class="plant-toggle" role="group" aria-label="Werk wählen">
+          <button class="toggle-btn" data-plant="RtP1">RtP1</button>
+          <button class="toggle-btn" data-plant="RseP">RseP</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <nav class="tabs" aria-label="Hauptnavigation">
+    <div class="tabs-inner">
+      <button class="tab-btn active" data-tab="scenario">Szenario-Inputs</button>
+      <button class="tab-btn" data-tab="global">Globale Einstellungen</button>
+      <button class="tab-btn" data-tab="types">Typen &amp; Technologien</button>
+      <button class="tab-btn" data-tab="results">Ergebnisse</button>
+    </div>
+  </nav>
+
+  <main class="content">
+    <div class="content-inner">
+      <section id="tab-scenario" class="tab-panel active">
+        <div class="panel-header">
+          <h2>Szenario-Inputs</h2>
+          <div class="field">
+            <label class="label" for="model-select">Berechnung / Yield-Modell</label>
+            <select id="model-select" class="input"></select>
+          </div>
+        </div>
+        <div class="panel-body">
+          <div class="card">
+            <h3>Familien</h3>
+            <div class="table-scroll">
+              <table class="table" id="families-table">
+                <thead>
+                  <tr>
+                    <th>Familie</th>
+                    <th>Defect Density D0</th>
+                    <th>D<sub>in</sub></th>
+                    <th>t</th>
+                    <th>t<sub>start</sub></th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <h3>SQL Überblick</h3>
+              <span class="hint">Beispiel-Daten &amp; Queries (nur relevante Spalten)</span>
+            </div>
+            <pre class="sql-block" id="sql-snapshot"></pre>
+          </div>
+        </div>
+      </section>
+
+      <section id="tab-global" class="tab-panel">
+        <div class="panel-header">
+          <h2>Berechnungsarten</h2>
+          <button id="add-model" class="btn">+ Modell hinzufügen</button>
+        </div>
+        <div class="panel-body">
+          <div class="table-scroll">
+            <table class="table" id="models-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Beschreibung</th>
+                  <th>Layers / Masken</th>
+                  <th>SQL Vorschau</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section id="tab-types" class="tab-panel">
+        <div class="panel-header">
+          <h2>Typen &amp; Technologien</h2>
+          <div class="meta-badge">
+            Startjahr der Berechnung: <span id="calc-start-year"></span>
+          </div>
+        </div>
+        <div class="panel-body">
+          <div class="card">
+            <h3>Chip-Typen</h3>
+            <div class="table-scroll">
+              <table class="table" id="types-table">
+                <thead>
+                  <tr>
+                    <th>TTNR</th>
+                    <th>Beschreibung</th>
+                    <th>Familie</th>
+                    <th>Package</th>
+                    <th>Die Area (mm²)</th>
+                    <th>C/W</th>
+                    <th>Technologien</th>
+                    <th>Sonderstartjahr</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3>Technologien</h3>
+            <div class="table-scroll">
+              <table class="table" id="tech-table">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Beschreibung</th>
+                    <th>Ziel-Feld</th>
+                    <th>Extra Yield [%]</th>
+                    <th>Dynamisch</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+            <div id="tech-years"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="tab-results" class="tab-panel">
+        <div class="panel-header">
+          <h2>Ergebnisse</h2>
+        </div>
+        <div class="panel-body">
+          <div class="table-scroll tall">
+            <table class="table sticky" id="results-table">
+              <thead>
+                <tr>
+                  <th>Jahr</th>
+                  <th>TTNR</th>
+                  <th>Beschreibung</th>
+                  <th>Familie</th>
+                  <th>Package</th>
+                  <th>EPI</th>
+                  <th>FAB</th>
+                  <th>VM</th>
+                  <th>Sägen</th>
+                  <th>KGD</th>
+                  <th>OSAT</th>
+                  <th>EPI-Auslieferung</th>
+                  <th>Total Yield</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <div id="tooltip" class="tooltip" role="tooltip"></div>
+
+  <script src="script.js"></script>
+</body>
+</html>
