@@ -65,7 +65,34 @@ SELECT
 FROM base;`
 };
 
-const state = {
+const STORAGE_KEY = "yield-calculator-state-v1";
+const UI_KEY = "yield-calculator-ui-v1";
+
+const cloneState = (value) => JSON.parse(JSON.stringify(value));
+
+const loadState = () => {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (!stored) return null;
+    return JSON.parse(stored);
+  } catch (error) {
+    console.warn("Konnte State nicht laden:", error);
+    return null;
+  }
+};
+
+const loadUiState = () => {
+  try {
+    const stored = localStorage.getItem(UI_KEY);
+    if (!stored) return null;
+    return JSON.parse(stored);
+  } catch (error) {
+    console.warn("Konnte UI-State nicht laden:", error);
+    return null;
+  }
+};
+
+const defaultState = {
   scenario: {
     name: "Baseline 2025",
     start_year: 2025,
@@ -226,6 +253,8 @@ const state = {
   }
 };
 
+let state = loadState() ?? cloneState(defaultState);
+
 const baseYields = {
   EPI: 0.985,
   VM: 0.886,
@@ -235,8 +264,24 @@ const baseYields = {
   EPI_SHIP: 0.995
 };
 
-let activePlant = "RtP1";
-let activeTab = "scenario";
+const storedUi = loadUiState();
+let activePlant = storedUi?.activePlant || "RtP1";
+let activeTab = storedUi?.activeTab || "scenario";
+
+let saveTimer = null;
+const scheduleSave = () => {
+  if (saveTimer) {
+    window.clearTimeout(saveTimer);
+  }
+  saveTimer = window.setTimeout(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      localStorage.setItem(UI_KEY, JSON.stringify({ activePlant, activeTab }));
+    } catch (error) {
+      console.warn("Konnte State nicht speichern:", error);
+    }
+  }, 300);
+};
 
 const scenarioNameInput = document.getElementById("scenario-name");
 const scenarioStartInput = document.getElementById("scenario-start");
@@ -244,8 +289,20 @@ const scenarioEndInput = document.getElementById("scenario-end");
 const modelSelect = document.getElementById("model-select");
 const tooltip = document.getElementById("tooltip");
 const sqlSnapshot = document.getElementById("sql-snapshot");
+const scenarioError = document.getElementById("scenario-error");
 
 const clamp = (value) => Math.min(1, Math.max(0, value));
+
+const setInputError = (input, hasError) => {
+  input.classList.toggle("input-error", hasError);
+};
+
+const parseNumberInput = (input, { min = 0, integer = false } = {}) => {
+  const raw = integer ? parseInt(input.value, 10) : parseFloat(input.value);
+  const valid = Number.isFinite(raw) && raw >= min;
+  setInputError(input, !valid);
+  return valid ? raw : null;
+};
 
 const formatSql = (formula, params) => {
   let formatted = formula;
@@ -273,6 +330,18 @@ const getScenarioYears = () => {
     years.push(year);
   }
   return years;
+};
+
+const validateScenarioYears = () => {
+  const start = state.scenario.start_year;
+  const end = state.scenario.end_year;
+  const valid = Number.isFinite(start) && Number.isFinite(end) && start <= end;
+  if (scenarioError) {
+    scenarioError.textContent = valid ? "" : "Startjahr muss kleiner oder gleich dem Endjahr sein.";
+  }
+  setInputError(scenarioStartInput, !valid);
+  setInputError(scenarioEndInput, !valid);
+  return valid;
 };
 
 const buildSqlSnapshot = () => {
@@ -385,6 +454,9 @@ const buildFieldSql = ({ field, base, totalExtra, year, ttnr, defectFormula, fab
 
 const computeResults = () => {
   const results = [];
+  if (!validateScenarioYears()) {
+    return results;
+  }
   const plant = getPlant();
   const techs = getTechnologies();
   const chipTypeTech = getChipTypeTech();
@@ -444,6 +516,7 @@ const renderScenario = () => {
   scenarioStartInput.value = state.scenario.start_year;
   scenarioEndInput.value = state.scenario.end_year;
   document.getElementById("calc-start-year").textContent = state.scenario.start_year;
+  validateScenarioYears();
 };
 
 const renderModelSelect = () => {
@@ -637,6 +710,7 @@ const switchTab = (tab) => {
   document.querySelectorAll(".tab-panel").forEach((panel) => {
     panel.classList.toggle("active", panel.id === `tab-${tab}`);
   });
+  scheduleSave();
 };
 
 const updateResults = () => {
@@ -663,6 +737,7 @@ const bindEvents = () => {
     btn.addEventListener("click", () => {
       activePlant = btn.dataset.plant;
       renderAll();
+      scheduleSave();
     });
   });
 
@@ -672,49 +747,81 @@ const bindEvents = () => {
 
   scenarioNameInput.addEventListener("input", (event) => {
     state.scenario.name = event.target.value;
+    scheduleSave();
   });
   scenarioStartInput.addEventListener("input", (event) => {
-    state.scenario.start_year = parseInt(event.target.value || 0, 10);
+    const nextValue = parseNumberInput(event.target, { min: 0, integer: true });
+    if (nextValue === null) {
+      validateScenarioYears();
+      return;
+    }
+    state.scenario.start_year = nextValue;
     renderAll();
+    scheduleSave();
   });
   scenarioEndInput.addEventListener("input", (event) => {
-    state.scenario.end_year = parseInt(event.target.value || 0, 10);
+    const nextValue = parseNumberInput(event.target, { min: 0, integer: true });
+    if (nextValue === null) {
+      validateScenarioYears();
+      return;
+    }
+    state.scenario.end_year = nextValue;
     renderAll();
+    scheduleSave();
   });
 
   modelSelect.addEventListener("change", (event) => {
     state.scenario.selected_model = event.target.value;
     updateResults();
+    scheduleSave();
   });
 
   document.body.addEventListener("input", (event) => {
     const target = event.target;
     if (target.dataset.family) {
       const family = getFamilies().find((f) => f.id === target.dataset.family);
-      family[target.dataset.field] = parseFloat(target.value || 0);
+      const value = parseNumberInput(target, { min: 0 });
+      if (value === null) return;
+      family[target.dataset.field] = value;
       updateResults();
+      scheduleSave();
     }
     if (target.dataset.model) {
       const model = state.models.find((m) => m.id === target.dataset.model);
-      model[target.dataset.field] = target.dataset.field === "layers"
-        ? parseInt(target.value || 0, 10)
-        : target.value;
+      if (target.dataset.field === "layers") {
+        const value = parseNumberInput(target, { min: 1, integer: true });
+        if (value === null) return;
+        model.layers = value;
+      } else {
+        model[target.dataset.field] = target.value;
+      }
       renderModelSelect();
       updateResults();
+      scheduleSave();
     }
     if (target.dataset.chip) {
       const chip = getChipTypes().find((c) => c.ttnr === target.dataset.chip);
       if (target.dataset.field === "technologies") return;
       const numericFields = ["die_area_mm2", "cw", "special_start_year"];
-      chip[target.dataset.field] = numericFields.includes(target.dataset.field)
-        ? parseFloat(target.value || 0)
-        : target.value;
+      if (numericFields.includes(target.dataset.field)) {
+        const min = target.dataset.field === "die_area_mm2" ? 0.1 : 0;
+        const integer = target.dataset.field === "special_start_year";
+        const value = parseNumberInput(target, { min, integer });
+        if (value === null) return;
+        chip[target.dataset.field] = value;
+      } else {
+        chip[target.dataset.field] = target.value;
+      }
       updateResults();
+      scheduleSave();
     }
     if (target.dataset.tech) {
       const tech = getTechnologies().find((t) => t.id === target.dataset.tech);
       if (target.dataset.field === "static_extra_pct") {
-        tech.static_extra_pct = parseFloat(target.value || 0);
+        const value = parseFloat(target.value);
+        setInputError(target, Number.isNaN(value));
+        if (Number.isNaN(value)) return;
+        tech.static_extra_pct = value;
       } else if (target.dataset.field === "is_dynamic") {
         tech.is_dynamic = target.checked;
       } else {
@@ -722,17 +829,26 @@ const bindEvents = () => {
       }
       renderTechTable();
       updateResults();
+      scheduleSave();
     }
     if (target.dataset.techYear) {
       const tech = getTechnologies().find((t) => t.id === target.dataset.techYear);
       const year = parseInt(target.dataset.year, 10);
-      const value = target.value === "" ? undefined : parseFloat(target.value);
+      if (target.value === "") {
+        delete tech.years[year];
+        updateResults();
+        scheduleSave();
+        return;
+      }
+      const value = parseNumberInput(target, { min: 0 });
+      if (value === null) return;
       if (value === undefined) {
         delete tech.years[year];
       } else {
         tech.years[year] = value;
       }
       updateResults();
+      scheduleSave();
     }
   });
 
@@ -742,6 +858,7 @@ const bindEvents = () => {
       const selected = Array.from(target.selectedOptions).map((option) => option.value);
       getChipTypeTech()[target.dataset.chip] = selected;
       updateResults();
+      scheduleSave();
     }
   });
 
@@ -757,6 +874,7 @@ const bindEvents = () => {
       });
       renderModelSelect();
       renderModelsTable();
+      scheduleSave();
     }
     if (event.target.dataset.removeModel) {
       const id = event.target.dataset.removeModel;
@@ -767,6 +885,7 @@ const bindEvents = () => {
       renderModelSelect();
       renderModelsTable();
       updateResults();
+      scheduleSave();
     }
   });
 
@@ -825,6 +944,7 @@ const renderAll = () => {
   renderTypesTable();
   renderTechTable();
   renderResults();
+  switchTab(activeTab);
 };
 
 renderAll();
