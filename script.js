@@ -11,41 +11,69 @@ CREATE TABLE yield_models (id TEXT PRIMARY KEY, name TEXT, description TEXT, lay
 INSERT INTO plants VALUES ('RtP1', 'Werk RtP1');
 INSERT INTO plants VALUES ('RseP', 'Werk RseP');
 
-INSERT INTO families VALUES ('RF1', 'RtP1', 'RF1', 0.23, 0.05, 1.8, 0.2);
-INSERT INTO families VALUES ('RF2', 'RtP1', 'RF2', 0.18, 0.04, 2.1, 0.3);
-INSERT INTO families VALUES ('SF1', 'RseP', 'SF1', 0.26, 0.06, 1.6, 0.1);
-INSERT INTO families VALUES ('SF2', 'RseP', 'SF2', 0.21, 0.04, 1.9, 0.25);
+INSERT INTO families VALUES ('T12', 'RtP1', 'T12', 0.42, 0.07, 1.6, 0.1);
+INSERT INTO families VALUES ('P28', 'RtP1', 'P28', 0.31, 0.05, 1.9, 0.2);
+INSERT INTO families VALUES ('H55', 'RtP1', 'H55', 0.58, 0.09, 1.4, 0.0);
+INSERT INTO families VALUES ('K90', 'RtP1', 'K90', 0.27, 0.04, 2.1, 0.15);
+INSERT INTO families VALUES ('S40', 'RseP', 'S40', 0.36, 0.06, 1.7, 0.1);
+INSERT INTO families VALUES ('M70', 'RseP', 'M70', 0.49, 0.08, 1.5, 0.05);
+INSERT INTO families VALUES ('G22', 'RseP', 'G22', 0.28, 0.04, 2.0, 0.2);
 
-INSERT INTO chip_types VALUES ('0270.248.172', 'RtP1', 'Drive Controller', 'RF1', 'QFN-48', 64, 200, 0);
-INSERT INTO chip_types VALUES ('0412.093.551', 'RtP1', 'Sensor Hub', 'RF1', 'BGA-96', 81, 200, 2027);
-INSERT INTO chip_types VALUES ('0198.552.730', 'RtP1', 'Power Gate', 'RF2', 'SOIC-16', 55, 200, 0);
-INSERT INTO chip_types VALUES ('0325.401.880', 'RseP', 'Connectivity Core', 'SF1', 'LGA-64', 72, 200, 0);
-INSERT INTO chip_types VALUES ('0550.330.041', 'RseP', 'Analog Frontend', 'SF2', 'QFN-32', 48, 200, 0);
-INSERT INTO chip_types VALUES ('0607.180.912', 'RseP', 'System Gateway', 'SF2', 'BGA-128', 95, 200, 2026);
+INSERT INTO chip_types VALUES ('0270.248.172', 'RtP1', 'Power IC Gen2', 'T12', 'QFN-64', 124.6, 680, 0);
+INSERT INTO chip_types VALUES ('0412.093.551', 'RtP1', 'Sensor Hub MX', 'P28', 'BGA-100', 86.2, 520, 2028);
+INSERT INTO chip_types VALUES ('0198.552.730', 'RtP1', 'Gate Driver Pro', 'T12', 'SOIC-20', 52.4, 420, 0);
+INSERT INTO chip_types VALUES ('0335.781.204', 'RtP1', 'Motor Control X3', 'H55', 'QFN-88', 178.3, 740, 2027);
+INSERT INTO chip_types VALUES ('0620.410.995', 'RtP1', 'PMIC Core', 'K90', 'LQFP-64', 64.9, 510, 0);
+INSERT INTO chip_types VALUES ('0325.401.880', 'RseP', 'Connectivity Core', 'S40', 'LGA-72', 72.8, 460, 0);
+INSERT INTO chip_types VALUES ('0550.330.041', 'RseP', 'Analog Frontend Plus', 'G22', 'QFN-40', 48.5, 380, 0);
+INSERT INTO chip_types VALUES ('0607.180.912', 'RseP', 'System Gateway LX', 'M70', 'BGA-144', 112.3, 620, 2026);
+INSERT INTO chip_types VALUES ('0715.522.310', 'RseP', 'RF Control Node', 'S40', 'QFN-56', 96.4, 540, 2029);
 
-INSERT INTO technologies VALUES ('tech_rtp1_1', 'RtP1', 'EUV Boost', 'Verbesserte Lithographie', 'FAB', 1.8, 0);
-INSERT INTO technologies VALUES ('tech_rtp1_2', 'RtP1', 'Saw Clean', 'Optimierte Sägeprozesse', 'SAW', 0.9, 1);
-INSERT INTO technologies VALUES ('tech_rsep_1', 'RseP', 'Fab Control', 'Stabilisierung der FAB yield', 'FAB', 1.1, 1);
-INSERT INTO technologies VALUES ('tech_rsep_2', 'RseP', 'OSAT Partner', 'Verbesserte OSAT Ausbeute', 'OSAT', 0.7, 0);
+INSERT INTO technologies VALUES ('sakasa', 'RtP1', 'Sakasa', 'Verbesserte Sägestabilität', 'SAW', 1.4, 0);
+INSERT INTO technologies VALUES ('euv_plus', 'RtP1', 'EUV Plus', 'Erweiterte Lithographie-Window', 'FAB', 2.1, 0);
+INSERT INTO technologies VALUES ('wlbi', 'RtP1', 'WLBI', 'Wafer-Level Burn-In zur Defektreduktion', 'FAB', 0.0, 1);
+INSERT INTO technologies VALUES ('cu_thin', 'RtP1', 'Cu Thin', 'Kupfer-Optimierung im Back-End', 'KGD', 0.0, 1);
+INSERT INTO technologies VALUES ('smart_saw', 'RseP', 'Smart Saw', 'Optimiertes Sägen für weniger Chipping', 'SAW', 1.0, 0);
+INSERT INTO technologies VALUES ('osat_prime', 'RseP', 'OSAT Prime', 'Verbesserte OSAT-Partnerqualität', 'OSAT', 0.8, 0);
+INSERT INTO technologies VALUES ('epi_purify', 'RseP', 'EPI Purify', 'Reinere Epitaxie für bessere Starts', 'EPI', 0.7, 0);
+INSERT INTO technologies VALUES ('fab_stab', 'RseP', 'Fab Stabilization', 'Stabilisierung der FAB-Prozessfenster', 'FAB', 0.0, 1);
+INSERT INTO technologies VALUES ('kgd_screen', 'RseP', 'KGD Screening', 'Schärferes Screening vor OSAT', 'KGD', 0.0, 1);
 
-INSERT INTO technology_years VALUES ('tech_rtp1_1', 2027, 2.2);
-INSERT INTO technology_years VALUES ('tech_rtp1_2', 2026, 1.2);
-INSERT INTO technology_years VALUES ('tech_rtp1_2', 2029, 1.6);
-INSERT INTO technology_years VALUES ('tech_rsep_1', 2025, 0.8);
-INSERT INTO technology_years VALUES ('tech_rsep_1', 2028, 1.4);
+INSERT INTO technology_years VALUES ('wlbi', 2026, 0.6);
+INSERT INTO technology_years VALUES ('wlbi', 2029, 1.1);
+INSERT INTO technology_years VALUES ('wlbi', 2032, 1.7);
+INSERT INTO technology_years VALUES ('cu_thin', 2027, 0.4);
+INSERT INTO technology_years VALUES ('cu_thin', 2031, 0.9);
+INSERT INTO technology_years VALUES ('fab_stab', 2026, 0.5);
+INSERT INTO technology_years VALUES ('fab_stab', 2030, 1.3);
+INSERT INTO technology_years VALUES ('fab_stab', 2034, 1.6);
+INSERT INTO technology_years VALUES ('kgd_screen', 2027, 0.6);
+INSERT INTO technology_years VALUES ('kgd_screen', 2032, 1.1);
 
-INSERT INTO chip_type_tech VALUES ('0270.248.172', 'tech_rtp1_1');
-INSERT INTO chip_type_tech VALUES ('0270.248.172', 'tech_rtp1_2');
-INSERT INTO chip_type_tech VALUES ('0412.093.551', 'tech_rtp1_1');
-INSERT INTO chip_type_tech VALUES ('0325.401.880', 'tech_rsep_1');
-INSERT INTO chip_type_tech VALUES ('0550.330.041', 'tech_rsep_2');
-INSERT INTO chip_type_tech VALUES ('0607.180.912', 'tech_rsep_1');
-INSERT INTO chip_type_tech VALUES ('0607.180.912', 'tech_rsep_2');
+INSERT INTO chip_type_tech VALUES ('0270.248.172', 'euv_plus');
+INSERT INTO chip_type_tech VALUES ('0270.248.172', 'wlbi');
+INSERT INTO chip_type_tech VALUES ('0270.248.172', 'sakasa');
+INSERT INTO chip_type_tech VALUES ('0412.093.551', 'euv_plus');
+INSERT INTO chip_type_tech VALUES ('0412.093.551', 'wlbi');
+INSERT INTO chip_type_tech VALUES ('0198.552.730', 'sakasa');
+INSERT INTO chip_type_tech VALUES ('0335.781.204', 'euv_plus');
+INSERT INTO chip_type_tech VALUES ('0335.781.204', 'cu_thin');
+INSERT INTO chip_type_tech VALUES ('0620.410.995', 'wlbi');
+INSERT INTO chip_type_tech VALUES ('0620.410.995', 'sakasa');
+INSERT INTO chip_type_tech VALUES ('0325.401.880', 'fab_stab');
+INSERT INTO chip_type_tech VALUES ('0325.401.880', 'smart_saw');
+INSERT INTO chip_type_tech VALUES ('0550.330.041', 'osat_prime');
+INSERT INTO chip_type_tech VALUES ('0550.330.041', 'epi_purify');
+INSERT INTO chip_type_tech VALUES ('0607.180.912', 'fab_stab');
+INSERT INTO chip_type_tech VALUES ('0607.180.912', 'kgd_screen');
+INSERT INTO chip_type_tech VALUES ('0607.180.912', 'osat_prime');
+INSERT INTO chip_type_tech VALUES ('0715.522.310', 'smart_saw');
+INSERT INTO chip_type_tech VALUES ('0715.522.310', 'kgd_screen');
 
-INSERT INTO yield_models VALUES ('poisson', 'Poisson', 'Standard-Modell mit exponentiellem Ausfall', 12, 'EXP(-D_year * A_cm2)');
-INSERT INTO yield_models VALUES ('murphy', 'Murphy', 'Classic Murphy approximation', 10, '(1 - EXP(-D_year * A_cm2)) / (D_year * A_cm2)');
-INSERT INTO yield_models VALUES ('neg_binom', 'Negative Binomial', 'Alpha = 3.0', 14, 'POWER(1 + (D_year * A_cm2)/alpha, -alpha)');
-INSERT INTO yield_models VALUES ('seeds', 'Seeds', 'Deterministisches Platzhaltermodell', 8, 'EXP(-D_year * A_cm2 * 0.92)');`,
+INSERT INTO yield_models VALUES ('poisson', 'Poisson', 'Classical Poisson yield model', 44, 'FAB = EXP(-D_year * A_cm2)');
+INSERT INTO yield_models VALUES ('murphy', 'Murphy', 'Murphy yield approximation for clustered defects', 38, 'FAB = (1 - EXP(-D_year * A_cm2)) / (D_year * A_cm2)');
+INSERT INTO yield_models VALUES ('neg_binom', 'Negative Binomial', 'Alpha = 3.0 with clustered defect correction', 52, 'FAB = POWER(1 + (D_year * A_cm2)/alpha, -alpha)');
+INSERT INTO yield_models VALUES ('seeds', 'Seeds', 'Deterministic seed-based yield with fixed loss factor', 30, 'FAB = EXP(-D_year * A_cm2 * 0.92)');`,
   exampleQuery: `-- Beispiel-Query pro Jahr
 WITH base AS (
   SELECT
@@ -92,165 +120,66 @@ const loadUiState = () => {
   }
 };
 
+const buildYearsFromOverrides = (overrides) =>
+  overrides.reduce((acc, entry) => {
+    acc[entry.year] = entry.extraPct;
+    return acc;
+  }, {});
+
+const buildChipTechMap = (mappings) =>
+  mappings.reduce((acc, mapping) => {
+    acc[mapping.ttnr] = mapping.technologyIds;
+    return acc;
+  }, {});
+
 const defaultState = {
   scenario: {
-    name: "Baseline 2025",
-    start_year: 2025,
-    end_year: 2030,
-    selected_model: "poisson"
+    name: db.scenario.name,
+    start_year: db.scenario.startYear,
+    end_year: db.scenario.endYear,
+    selected_model: db.scenario.selectedCalculationModelId
   },
-  models: [
-    {
-      id: "poisson",
-      name: "Poisson",
-      description: "Standard-Modell mit exponentiellem Ausfall",
-      layers: 12,
-      sql: "EXP(-D_year * A_cm2)"
-    },
-    {
-      id: "murphy",
-      name: "Murphy",
-      description: "Classic Murphy approximation",
-      layers: 10,
-      sql: "(1 - EXP(-D_year * A_cm2)) / (D_year * A_cm2)"
-    },
-    {
-      id: "neg_binom",
-      name: "Negative Binomial",
-      description: "Alpha = 3.0",
-      layers: 14,
-      sql: "POWER(1 + (D_year * A_cm2)/alpha, -alpha)"
-    },
-    {
-      id: "seeds",
-      name: "Seeds",
-      description: "Deterministisches Platzhaltermodell",
-      layers: 8,
-      sql: "EXP(-D_year * A_cm2 * 0.92)"
-    }
-  ],
-  plants: {
-    RtP1: {
-      families: [
-        { id: "RF1", name: "RF1", D0: 0.23, D_in: 0.05, t: 1.8, t_start: 0.2 },
-        { id: "RF2", name: "RF2", D0: 0.18, D_in: 0.04, t: 2.1, t_start: 0.3 }
-      ],
-      technologies: [
-        {
-          id: "tech_rtp1_1",
-          name: "EUV Boost",
-          description: "Verbesserte Lithographie",
-          target_field: "FAB",
-          static_extra_pct: 1.8,
-          is_dynamic: false,
-          years: { 2027: 2.2 }
-        },
-        {
-          id: "tech_rtp1_2",
-          name: "Saw Clean",
-          description: "Optimierte Sägeprozesse",
-          target_field: "SAW",
-          static_extra_pct: 0.9,
-          is_dynamic: true,
-          years: { 2026: 1.2, 2029: 1.6 }
-        }
-      ],
-      chipTypes: [
-        {
-          ttnr: "0270.248.172",
-          name: "Drive Controller",
-          family_id: "RF1",
-          package: "QFN-48",
-          die_area_mm2: 64,
-          cw: 200,
-          special_start_year: 0
-        },
-        {
-          ttnr: "0412.093.551",
-          name: "Sensor Hub",
-          family_id: "RF1",
-          package: "BGA-96",
-          die_area_mm2: 81,
-          cw: 200,
-          special_start_year: 2027
-        },
-        {
-          ttnr: "0198.552.730",
-          name: "Power Gate",
-          family_id: "RF2",
-          package: "SOIC-16",
-          die_area_mm2: 55,
-          cw: 200,
-          special_start_year: 0
-        }
-      ],
-      chipTypeTech: {
-        "0270.248.172": ["tech_rtp1_1", "tech_rtp1_2"],
-        "0412.093.551": ["tech_rtp1_1"],
-        "0198.552.730": []
+  models: db.calculationModels.map((model) => ({
+    id: model.id,
+    name: model.name,
+    description: model.description,
+    layers: model.layers,
+    sql: model.sqlFormula
+  })),
+  plants: Object.fromEntries(
+    Object.entries(db.plants).map(([plantId, plant]) => [
+      plantId,
+      {
+        families: plant.families.map((family) => ({
+          id: family.id,
+          name: family.name,
+          D0: family.D0,
+          D_in: family.D_in,
+          t: family.t,
+          t_start: family.t_start
+        })),
+        technologies: plant.technologies.map((tech) => ({
+          id: tech.id,
+          name: tech.name,
+          description: tech.description,
+          target_field: tech.targetField,
+          static_extra_pct: tech.staticExtraPct,
+          is_dynamic: tech.isDynamic,
+          years: buildYearsFromOverrides(tech.yearlyOverrides)
+        })),
+        chipTypes: plant.chipTypes.map((chip) => ({
+          ttnr: chip.ttnr,
+          name: chip.name,
+          family_id: chip.familyId,
+          package: chip.package,
+          die_area_mm2: chip.dieArea_mm2,
+          cw: chip.cw,
+          special_start_year: chip.specialStartYear
+        })),
+        chipTypeTech: buildChipTechMap(plant.chipTypeTechnologies)
       }
-    },
-    RseP: {
-      families: [
-        { id: "SF1", name: "SF1", D0: 0.26, D_in: 0.06, t: 1.6, t_start: 0.1 },
-        { id: "SF2", name: "SF2", D0: 0.21, D_in: 0.04, t: 1.9, t_start: 0.25 }
-      ],
-      technologies: [
-        {
-          id: "tech_rsep_1",
-          name: "Fab Control",
-          description: "Stabilisierung der FAB yield",
-          target_field: "FAB",
-          static_extra_pct: 1.1,
-          is_dynamic: true,
-          years: { 2025: 0.8, 2028: 1.4 }
-        },
-        {
-          id: "tech_rsep_2",
-          name: "OSAT Partner",
-          description: "Verbesserte OSAT Ausbeute",
-          target_field: "OSAT",
-          static_extra_pct: 0.7,
-          is_dynamic: false,
-          years: {}
-        }
-      ],
-      chipTypes: [
-        {
-          ttnr: "0325.401.880",
-          name: "Connectivity Core",
-          family_id: "SF1",
-          package: "LGA-64",
-          die_area_mm2: 72,
-          cw: 200,
-          special_start_year: 0
-        },
-        {
-          ttnr: "0550.330.041",
-          name: "Analog Frontend",
-          family_id: "SF2",
-          package: "QFN-32",
-          die_area_mm2: 48,
-          cw: 200,
-          special_start_year: 0
-        },
-        {
-          ttnr: "0607.180.912",
-          name: "System Gateway",
-          family_id: "SF2",
-          package: "BGA-128",
-          die_area_mm2: 95,
-          cw: 200,
-          special_start_year: 2026
-        }
-      ],
-      chipTypeTech: {
-        "0325.401.880": ["tech_rsep_1"],
-        "0550.330.041": ["tech_rsep_2"],
-        "0607.180.912": ["tech_rsep_1", "tech_rsep_2"]
-      }
-    }
-  }
+    ])
+  )
 };
 
 let state = loadState() ?? cloneState(defaultState);
