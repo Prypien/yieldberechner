@@ -17,11 +17,11 @@
         <div class="scenario-years">
           <div class="field">
             <label class="label" for="scenario-start">Startjahr</label>
-            <input id="scenario-start" class="input" type="number" />
+            <input id="scenario-start" class="input input-number" type="number" min="0" step="1" inputmode="numeric" placeholder="2025" />
           </div>
           <div class="field">
             <label class="label" for="scenario-end">Endjahr</label>
-            <input id="scenario-end" class="input" type="number" />
+            <input id="scenario-end" class="input input-number" type="number" min="0" step="1" inputmode="numeric" placeholder="2030" />
           </div>
           <div class="field scenario-error">
             <span id="scenario-error" class="error-text" role="alert"></span>
@@ -129,7 +129,7 @@
                     <th>Die Area (mm²)</th>
                     <th>C/W</th>
                     <th>Technologien</th>
-                    <th>Sonderstartjahr</th>
+                    <th>Sonderstartjahr <span class="col-hint">0 = immer</span></th>
                   </tr>
                 </thead>
                 <tbody></tbody>
@@ -164,9 +164,13 @@
         </div>
         <div class="panel-body">
           <div class="table-scroll tall">
-            <table class="table sticky" id="results-table">
+            <table class="table sticky results-table" id="results-table">
               <thead>
-                <tr>
+                <tr class="group">
+                  <th colspan="5">Stammdaten</th>
+                  <th colspan="8">Yield-Stationen</th>
+                </tr>
+                <tr class="sub">
                   <th>Jahr</th>
                   <th>TTNR</th>
                   <th>Beschreibung</th>

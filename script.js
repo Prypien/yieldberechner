@@ -534,10 +534,10 @@ const renderFamilies = () => {
     .map((family) =>
       `<tr>
         <td>${family.name}</td>
-        <td><input class="input" type="number" step="0.01" data-family="${family.id}" data-field="D0" value="${family.D0}" /></td>
-        <td><input class="input" type="number" step="0.01" data-family="${family.id}" data-field="D_in" value="${family.D_in}" /></td>
-        <td><input class="input" type="number" step="0.01" data-family="${family.id}" data-field="t" value="${family.t}" /></td>
-        <td><input class="input" type="number" step="0.01" data-family="${family.id}" data-field="t_start" value="${family.t_start}" /></td>
+        <td><input class="input input-number" type="number" step="0.01" min="0" inputmode="decimal" data-family="${family.id}" data-field="D0" value="${family.D0}" /></td>
+        <td><input class="input input-number" type="number" step="0.01" min="0" inputmode="decimal" data-family="${family.id}" data-field="D_in" value="${family.D_in}" /></td>
+        <td><input class="input input-number" type="number" step="0.01" min="0" inputmode="decimal" data-family="${family.id}" data-field="t" value="${family.t}" /></td>
+        <td><input class="input input-number" type="number" step="0.01" min="0" inputmode="decimal" data-family="${family.id}" data-field="t_start" value="${family.t_start}" /></td>
       </tr>`
     )
     .join("");
@@ -554,7 +554,7 @@ const renderModelsTable = () => {
       `<tr>
         <td><input class="input" type="text" data-model="${model.id}" data-field="name" value="${model.name}" /></td>
         <td><input class="input" type="text" data-model="${model.id}" data-field="description" value="${model.description}" /></td>
-        <td><input class="input" type="number" data-model="${model.id}" data-field="layers" value="${model.layers}" /></td>
+        <td><input class="input input-number" type="number" min="1" step="1" inputmode="numeric" data-model="${model.id}" data-field="layers" value="${model.layers}" /></td>
         <td><textarea class="input sql" data-model="${model.id}" data-field="sql" rows="2">${model.sql}</textarea></td>
         <td><button class="icon-btn" data-remove-model="${model.id}">✕</button></td>
       </tr>`
@@ -585,10 +585,10 @@ const renderTypesTable = () => {
         <td><input class="input" type="text" data-chip="${chip.ttnr}" data-field="name" value="${chip.name}" /></td>
         <td><select class="input" data-chip="${chip.ttnr}" data-field="family_id">${familyOptions}</select></td>
         <td><input class="input" type="text" data-chip="${chip.ttnr}" data-field="package" value="${chip.package}" /></td>
-        <td><input class="input" type="number" step="0.1" data-chip="${chip.ttnr}" data-field="die_area_mm2" value="${chip.die_area_mm2}" /></td>
-        <td><input class="input" type="number" step="0.1" data-chip="${chip.ttnr}" data-field="cw" value="${chip.cw}" /></td>
+        <td><input class="input input-number" type="number" step="0.1" min="0.1" inputmode="decimal" data-chip="${chip.ttnr}" data-field="die_area_mm2" value="${chip.die_area_mm2}" /></td>
+        <td><input class="input input-number" type="number" step="0.1" min="0" inputmode="decimal" data-chip="${chip.ttnr}" data-field="cw" value="${chip.cw}" /></td>
         <td><select multiple class="input multi" data-chip="${chip.ttnr}" data-field="technologies">${techOptions}</select></td>
-        <td><input class="input" type="number" data-chip="${chip.ttnr}" data-field="special_start_year" value="${chip.special_start_year}" /></td>
+        <td><input class="input input-number" type="number" min="0" step="1" inputmode="numeric" placeholder="0" data-chip="${chip.ttnr}" data-field="special_start_year" value="${chip.special_start_year}" /></td>
       </tr>`;
     })
     .join("");
@@ -609,7 +609,7 @@ const renderTechTable = () => {
           </select>
         </td>
         <td>
-          <input class="input" type="number" step="0.1" data-tech="${tech.id}" data-field="static_extra_pct" value="${tech.static_extra_pct}" ${tech.is_dynamic ? "disabled" : ""} />
+          <input class="input input-number" type="number" step="0.1" inputmode="decimal" data-tech="${tech.id}" data-field="static_extra_pct" value="${tech.static_extra_pct}" ${tech.is_dynamic ? "disabled" : ""} />
         </td>
         <td>
           <label class="switch">
@@ -634,7 +634,7 @@ const renderTechYears = () => {
         .map((year) =>
           `<tr>
             <td>${year}</td>
-            <td><input class="input" type="number" step="0.1" data-tech-year="${tech.id}" data-year="${year}" value="${tech.years[year] ?? ""}" placeholder="0" /></td>
+            <td><input class="input input-number" type="number" step="0.1" min="0" inputmode="decimal" data-tech-year="${tech.id}" data-year="${year}" value="${tech.years[year] ?? ""}" placeholder="0" /></td>
           </tr>`
         )
         .join("");
@@ -660,7 +660,7 @@ const renderResults = () => {
     .map((row) => {
       const fields = row.fields;
       return `<tr>
-        <td>${row.year}</td>
+        <td class="num">${row.year}</td>
         <td class="mono">${row.chip.ttnr}</td>
         <td>${row.chip.name}</td>
         <td>${row.family.name}</td>
@@ -699,7 +699,9 @@ const renderYieldCell = (field, data, row, fabFormula, fabDefectFormula) => {
     totalExtra: data.totalExtra || 0,
     sqlPreview
   };
-  return `<td class="yield" data-tooltip='${JSON.stringify(payload)}'>${(data.value * 100).toFixed(2)}%</td>`;
+  const classes = ["yield", "num"];
+  if (field === "TOTAL") classes.push("total-cell");
+  return `<td class="${classes.join(" ")}" data-tooltip='${JSON.stringify(payload)}'>${(data.value * 100).toFixed(2)}%</td>`;
 };
 
 const switchTab = (tab) => {
