@@ -132,22 +132,9 @@ const buildChipTechMap = (mappings) =>
     return acc;
   }, {});
 
-const defaultState = {
-  scenario: {
-    name: db.scenario.name,
-    start_year: db.scenario.startYear,
-    end_year: db.scenario.endYear,
-    selected_model: db.scenario.selectedCalculationModelId
-  },
-  models: db.calculationModels.map((model) => ({
-    id: model.id,
-    name: model.name,
-    description: model.description,
-    layers: model.layers,
-    sql: model.sqlFormula
-  })),
-  plants: Object.fromEntries(
-    Object.entries(db.plants).map(([plantId, plant]) => [
+const buildPlantState = (plants) =>
+  Object.fromEntries(
+    Object.entries(plants).map(([plantId, plant]) => [
       plantId,
       {
         families: plant.families.map((family) => ({
@@ -179,10 +166,51 @@ const defaultState = {
         chipTypeTech: buildChipTechMap(plant.chipTypeTechnologies)
       }
     ])
-  )
+  );
+
+const buildScenarioState = ({ scenario, plants }) => ({
+  id: scenario.id || `scenario_${Date.now()}`,
+  name: scenario.name,
+  start_year: scenario.startYear ?? scenario.start_year,
+  end_year: scenario.endYear ?? scenario.end_year,
+  selected_model: scenario.selectedCalculationModelId ?? scenario.selected_model,
+  plants: buildPlantState(plants)
+});
+
+const defaultState = {
+  scenarios: [buildScenarioState({ scenario: db.scenario, plants: db.plants })],
+  models: db.calculationModels.map((model) => ({
+    id: model.id,
+    name: model.name,
+    description: model.description,
+    layers: model.layers,
+    sql: model.sqlFormula
+  }))
 };
 
-let state = loadState() ?? cloneState(defaultState);
+const normalizeState = (storedState) => {
+  if (!storedState) return null;
+  if (storedState.scenarios?.length) return storedState;
+  if (storedState.scenario && storedState.plants) {
+    const scenarioId = storedState.scenario.id || `scenario_${Date.now()}`;
+    return {
+      scenarios: [
+        {
+          id: scenarioId,
+          name: storedState.scenario.name,
+          start_year: storedState.scenario.start_year,
+          end_year: storedState.scenario.end_year,
+          selected_model: storedState.scenario.selected_model,
+          plants: storedState.plants
+        }
+      ],
+      models: storedState.models || cloneState(defaultState.models)
+    };
+  }
+  return storedState;
+};
+
+let state = normalizeState(loadState()) ?? cloneState(defaultState);
 
 const baseYields = {
   EPI: 0.985,
@@ -194,6 +222,7 @@ const baseYields = {
 };
 
 const storedUi = loadUiState();
+let activeScenarioId = storedUi?.activeScenarioId || state.scenarios[0]?.id;
 let activePlant = storedUi?.activePlant || "RtP1";
 let activeTab = storedUi?.activeTab || "scenario";
 
@@ -205,13 +234,15 @@ const scheduleSave = () => {
   saveTimer = window.setTimeout(() => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-      localStorage.setItem(UI_KEY, JSON.stringify({ activePlant, activeTab }));
+      localStorage.setItem(UI_KEY, JSON.stringify({ activeScenarioId, activePlant, activeTab }));
     } catch (error) {
       console.warn("Konnte State nicht speichern:", error);
     }
   }, 300);
 };
 
+const scenarioSelect = document.getElementById("scenario-select");
+const addScenarioButton = document.getElementById("add-scenario");
 const scenarioNameInput = document.getElementById("scenario-name");
 const scenarioStartInput = document.getElementById("scenario-start");
 const scenarioEndInput = document.getElementById("scenario-end");
@@ -219,6 +250,7 @@ const modelSelect = document.getElementById("model-select");
 const tooltip = document.getElementById("tooltip");
 const sqlSnapshot = document.getElementById("sql-snapshot");
 const scenarioError = document.getElementById("scenario-error");
+const plantSelect = document.getElementById("plant-select");
 
 const clamp = (value) => Math.min(1, Math.max(0, value));
 
@@ -241,9 +273,17 @@ const formatSql = (formula, params) => {
   return formatted;
 };
 
+const getScenario = () => {
+  const scenario = state.scenarios.find((item) => item.id === activeScenarioId) || state.scenarios[0];
+  if (scenario && scenario.id !== activeScenarioId) {
+    activeScenarioId = scenario.id;
+  }
+  return scenario;
+};
+
 const getModelById = (id) => state.models.find((model) => model.id === id);
 
-const getPlant = () => state.plants[activePlant];
+const getPlant = () => getScenario().plants[activePlant];
 
 const getFamilies = () => getPlant().families;
 
@@ -254,16 +294,18 @@ const getChipTypes = () => getPlant().chipTypes;
 const getChipTypeTech = () => getPlant().chipTypeTech;
 
 const getScenarioYears = () => {
+  const scenario = getScenario();
   const years = [];
-  for (let year = state.scenario.start_year; year <= state.scenario.end_year; year++) {
+  for (let year = scenario.start_year; year <= scenario.end_year; year++) {
     years.push(year);
   }
   return years;
 };
 
 const validateScenarioYears = () => {
-  const start = state.scenario.start_year;
-  const end = state.scenario.end_year;
+  const scenario = getScenario();
+  const start = scenario.start_year;
+  const end = scenario.end_year;
   const valid = Number.isFinite(start) && Number.isFinite(end) && start <= end;
   if (scenarioError) {
     scenarioError.textContent = valid ? "" : "Startjahr muss kleiner oder gleich dem Endjahr sein.";
@@ -274,7 +316,7 @@ const validateScenarioYears = () => {
 };
 
 const buildSqlSnapshot = () => {
-  const plantName = activePlant === "RtP1" ? "Werk RtP1" : "Werk RseP";
+  const plantName = `Werk ${activePlant}`;
   return [
     `-- Übersicht für ${plantName}`,
     sqlSeed.schema,
@@ -284,7 +326,7 @@ const buildSqlSnapshot = () => {
 };
 
 const computeDefectDensity = (family, year) => {
-  const yIdx = year - state.scenario.start_year;
+  const yIdx = year - getScenario().start_year;
   const formula = "(:D0 + :D_in) * POWER(0.985, :y_idx)";
   const value = (family.D0 + family.D_in) * Math.pow(0.985, yIdx);
   return {
@@ -300,7 +342,7 @@ const computeDefectDensity = (family, year) => {
 const computeFabYield = (family, dieAreaMm2, year) => {
   const D = computeDefectDensity(family, year);
   const A_cm2 = dieAreaMm2 / 100.0;
-  const model = getModelById(state.scenario.selected_model);
+  const model = getModelById(getScenario().selected_model);
   let value = 0;
   let formula = model.sql;
   if (model.id === "poisson") {
@@ -386,12 +428,13 @@ const computeResults = () => {
   if (!validateScenarioYears()) {
     return results;
   }
+  const scenario = getScenario();
   const plant = getPlant();
   const techs = getTechnologies();
   const chipTypeTech = getChipTypeTech();
   const families = getFamilies();
-  const start = state.scenario.start_year;
-  const end = state.scenario.end_year;
+  const start = scenario.start_year;
+  const end = scenario.end_year;
 
   for (let year = start; year <= end; year++) {
     plant.chipTypes.forEach((chip) => {
@@ -434,27 +477,42 @@ const computeResults = () => {
   return results;
 };
 
-const renderPlantToggle = () => {
-  document.querySelectorAll(".toggle-btn").forEach((btn) => {
-    btn.classList.toggle("active", btn.dataset.plant === activePlant);
-  });
+const renderPlantSelect = () => {
+  const scenario = getScenario();
+  const plantIds = Object.keys(scenario.plants);
+  if (!scenario.plants[activePlant]) {
+    activePlant = plantIds[0];
+  }
+  plantSelect.innerHTML = plantIds
+    .map((plantId) => `<option value="${plantId}">${plantId}</option>`)
+    .join("");
+  plantSelect.value = activePlant;
+};
+
+const renderScenarioSelect = () => {
+  scenarioSelect.innerHTML = state.scenarios
+    .map((scenario) => `<option value="${scenario.id}">${scenario.name}</option>`)
+    .join("");
+  scenarioSelect.value = activeScenarioId;
 };
 
 const renderScenario = () => {
-  scenarioNameInput.value = state.scenario.name;
-  scenarioStartInput.value = state.scenario.start_year;
-  scenarioEndInput.value = state.scenario.end_year;
-  document.getElementById("calc-start-year").textContent = state.scenario.start_year;
+  const scenario = getScenario();
+  scenarioNameInput.value = scenario.name;
+  scenarioStartInput.value = scenario.start_year;
+  scenarioEndInput.value = scenario.end_year;
+  document.getElementById("calc-start-year").textContent = scenario.start_year;
   validateScenarioYears();
 };
 
 const renderModelSelect = () => {
+  const scenario = getScenario();
   modelSelect.innerHTML = state.models
     .map((model) =>
       `<option value="${model.id}">${model.name}</option>`
     )
     .join("");
-  modelSelect.value = state.scenario.selected_model;
+  modelSelect.value = scenario.selected_model;
 };
 
 const renderFamilies = () => {
@@ -664,20 +722,41 @@ const positionTooltip = (x, y) => {
 };
 
 const bindEvents = () => {
-  document.querySelectorAll(".toggle-btn").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      activePlant = btn.dataset.plant;
-      renderAll();
-      scheduleSave();
-    });
+  plantSelect.addEventListener("change", (event) => {
+    activePlant = event.target.value;
+    renderAll();
+    scheduleSave();
+  });
+
+  scenarioSelect.addEventListener("change", (event) => {
+    activeScenarioId = event.target.value;
+    renderAll();
+    scheduleSave();
   });
 
   document.querySelectorAll(".tab-btn").forEach((btn) => {
     btn.addEventListener("click", () => switchTab(btn.dataset.tab));
   });
 
+  addScenarioButton.addEventListener("click", () => {
+    const scenario = getScenario();
+    const nextScenario = {
+      id: `scenario_${Date.now()}`,
+      name: `${scenario.name} Kopie`,
+      start_year: scenario.start_year,
+      end_year: scenario.end_year,
+      selected_model: scenario.selected_model,
+      plants: cloneState(scenario.plants)
+    };
+    state.scenarios.push(nextScenario);
+    activeScenarioId = nextScenario.id;
+    renderAll();
+    scheduleSave();
+  });
+
   scenarioNameInput.addEventListener("input", (event) => {
-    state.scenario.name = event.target.value;
+    getScenario().name = event.target.value;
+    renderScenarioSelect();
     scheduleSave();
   });
   scenarioStartInput.addEventListener("input", (event) => {
@@ -686,7 +765,7 @@ const bindEvents = () => {
       validateScenarioYears();
       return;
     }
-    state.scenario.start_year = nextValue;
+    getScenario().start_year = nextValue;
     renderAll();
     scheduleSave();
   });
@@ -696,13 +775,13 @@ const bindEvents = () => {
       validateScenarioYears();
       return;
     }
-    state.scenario.end_year = nextValue;
+    getScenario().end_year = nextValue;
     renderAll();
     scheduleSave();
   });
 
   modelSelect.addEventListener("change", (event) => {
-    state.scenario.selected_model = event.target.value;
+    getScenario().selected_model = event.target.value;
     updateResults();
     scheduleSave();
   });
@@ -810,9 +889,11 @@ const bindEvents = () => {
     if (event.target.dataset.removeModel) {
       const id = event.target.dataset.removeModel;
       state.models = state.models.filter((model) => model.id !== id);
-      if (state.scenario.selected_model === id) {
-        state.scenario.selected_model = state.models[0]?.id || "";
-      }
+      state.scenarios.forEach((scenario) => {
+        if (scenario.selected_model === id) {
+          scenario.selected_model = state.models[0]?.id || "";
+        }
+      });
       renderModelSelect();
       renderModelsTable();
       updateResults();
@@ -866,7 +947,8 @@ const buildTooltipContent = (data) => {
 };
 
 const renderAll = () => {
-  renderPlantToggle();
+  renderScenarioSelect();
+  renderPlantSelect();
   renderScenario();
   renderModelSelect();
   renderFamilies();
