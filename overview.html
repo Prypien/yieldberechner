@@ -11,7 +11,14 @@
     <div class="app-header-inner">
       <div class="header-left">
         <div class="scenario-block">
-          <label class="label" for="scenario-name">Szenario</label>
+          <label class="label" for="scenario-select">Szenario</label>
+          <div class="scenario-row">
+            <select id="scenario-select" class="input input-large"></select>
+            <button id="add-scenario" class="btn btn-secondary" type="button">+ Szenario</button>
+          </div>
+        </div>
+        <div class="scenario-block">
+          <label class="label" for="scenario-name">Name</label>
           <input id="scenario-name" class="input input-large" type="text" placeholder="z. B. Baseline 2025" />
         </div>
         <div class="scenario-years">
@@ -29,9 +36,9 @@
         </div>
       </div>
       <div class="header-right">
-        <div class="plant-toggle" role="group" aria-label="Werk wählen">
-          <button class="toggle-btn" data-plant="RtP1">RtP1</button>
-          <button class="toggle-btn" data-plant="RseP">RseP</button>
+        <div class="plant-select field">
+          <label class="label" for="plant-select">Werk</label>
+          <select id="plant-select" class="input"></select>
         </div>
       </div>
     </div>
