@@ -140,6 +140,96 @@ function parseNumber(value) {
   return Number.isNaN(number) ? value : number;
 }
 
+function parseCsv(text) {
+  const rows = [];
+  let row = [];
+  let field = "";
+  let inQuotes = false;
+
+  for (let i = 0; i < text.length; i += 1) {
+    const char = text[i];
+
+    if (inQuotes) {
+      if (char === "\"") {
+        if (text[i + 1] === "\"") {
+          field += "\"";
+          i += 1;
+        } else {
+          inQuotes = false;
+        }
+      } else {
+        field += char;
+      }
+      continue;
+    }
+
+    if (char === "\"") {
+      inQuotes = true;
+      continue;
+    }
+
+    if (char === ",") {
+      row.push(field);
+      field = "";
+      continue;
+    }
+
+    if (char === "\n" || char === "\r") {
+      if (char === "\r" && text[i + 1] === "\n") {
+        i += 1;
+      }
+      row.push(field);
+      field = "";
+      if (row.length > 1 || row[0] !== "") {
+        rows.push(row);
+      }
+      row = [];
+      continue;
+    }
+
+    field += char;
+  }
+
+  if (field.length > 0 || row.length > 0) {
+    row.push(field);
+    rows.push(row);
+  }
+
+  return rows;
+}
+
+function parseCsvTextToTables(text) {
+  const rows = parseCsv(text);
+  if (rows.length === 0) {
+    return {};
+  }
+  const headers = rows.shift().map((header) => header.trim());
+  const tables = {};
+
+  rows.forEach((row) => {
+    if (row.length === 0 || row.every((value) => value === "")) {
+      return;
+    }
+    const record = {};
+    headers.forEach((header, index) => {
+      record[header] = (row[index] ?? "").trim();
+    });
+    const tableNameRaw = record.table;
+    if (!tableNameRaw) {
+      return;
+    }
+    const tableName = normalizeTableName(tableNameRaw);
+    const { table, ...rest } = record;
+    const normalized = normalizeRow(rest);
+    if (!tables[tableName]) {
+      tables[tableName] = [];
+    }
+    tables[tableName].push(normalized);
+  });
+
+  return tables;
+}
+
 function normalizeTableName(name) {
   const key = name.trim().toLowerCase();
   return tableNameMap[key] || name;
@@ -177,6 +267,11 @@ async function parseXlsxArrayBuffer(arrayBuffer) {
 async function parseXlsxToTables(file) {
   const arrayBuffer = await file.arrayBuffer();
   return parseXlsxArrayBuffer(arrayBuffer);
+}
+
+async function parseCsvToTables(file) {
+  const text = await file.text();
+  return parseCsvTextToTables(text);
 }
 
 function normalizeRow(row) {
@@ -1008,19 +1103,30 @@ function applyImport({ tables, fileName, fileMetaText }) {
 async function loadDefaultXlsx() {
   try {
     setImportStatus({ status: "status-ok", message: "Standard-Datenbasis wird geladen…", details: "" });
-    const response = await fetch("yield_data_basis.xlsx");
-    if (!response.ok) {
-      throw new Error("Standard-Datei nicht gefunden.");
+    let response = await fetch("yield_data_basis.xlsx");
+    let tables = null;
+    let fileName = "yield_data_basis.xlsx";
+
+    if (response.ok) {
+      const arrayBuffer = await response.arrayBuffer();
+      tables = await parseXlsxArrayBuffer(arrayBuffer);
+    } else {
+      response = await fetch("yield_data_basis.csv");
+      if (!response.ok) {
+        throw new Error("Standard-Datei nicht gefunden.");
+      }
+      const text = await response.text();
+      tables = parseCsvTextToTables(text);
+      fileName = "yield_data_basis.csv";
     }
-    const arrayBuffer = await response.arrayBuffer();
-    const tables = await parseXlsxArrayBuffer(arrayBuffer);
+
     const contentLength = response.headers.get("content-length");
     const sizeKb = contentLength ? Math.round(Number(contentLength) / 1024) : null;
     const sizeLabel = sizeKb ? `${sizeKb} KB` : "Größe unbekannt";
     applyImport({
       tables,
-      fileName: "yield_data_basis.xlsx",
-      fileMetaText: `Automatisch geladen: yield_data_basis.xlsx (${sizeLabel})`
+      fileName,
+      fileMetaText: `Automatisch geladen: ${fileName} (${sizeLabel})`
     });
   } catch (error) {
     setImportStatus({
@@ -1129,7 +1235,8 @@ function initEvents() {
     elements.fileMeta.textContent = `${file.name} (${Math.round(file.size / 1024)} KB)`;
     try {
       setImportStatus({ status: "status-ok", message: "Import läuft…", details: "" });
-      const tables = await parseXlsxToTables(file);
+      const extension = file.name.split(".").pop().toLowerCase();
+      const tables = extension === "csv" ? await parseCsvToTables(file) : await parseXlsxToTables(file);
       applyImport({
         tables,
         fileName: file.name,
