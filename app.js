@@ -12,7 +12,6 @@ const numericFields = new Set([
   "static_extra_pct",
   "extra_pct",
   "base_yield",
-  "layers",
   "alpha",
   "n",
   "is_dynamic"
@@ -564,8 +563,6 @@ function buildDataModel(tables) {
     if (!registry) {
       errors.push(`yield_models enthält unbekanntes yield_model_id ${id}`);
     }
-    const layersValue = Number(row.layers);
-    const layers = Number.isFinite(layersValue) ? layersValue : 1;
     const alpha = normalizeModelParam(row.alpha, 3.0);
     const nValue = normalizeModelParam(row.n, 1);
     const paramWarnings = {
@@ -581,7 +578,6 @@ function buildDataModel(tables) {
     model.yieldModels.set(id, {
       id,
       name: row.name || registry?.label || id,
-      layers,
       alpha: alpha.value,
       n: nValue.value,
       paramWarnings,
@@ -1036,10 +1032,6 @@ function renderModelSettings() {
       </div>
       <div class="model-grid">
         <div class="field">
-          <label class="label">Layers</label>
-          <input class="input" type="number" data-field="layers" value="${model.layers ?? ""}" />
-        </div>
-        <div class="field">
           <label class="label">n ${nWarning ? "<span class=\"badge badge-warn\">Default</span>" : ""}</label>
           <input class="input" type="number" data-field="n" value="${registry?.needs.includes("n") ? model.n ?? "" : ""}" ${registry?.needs.includes("n") ? "" : "disabled"} />
         </div>
@@ -1053,15 +1045,8 @@ function renderModelSettings() {
         <pre class="sql-block">${registry?.sql || "-"}</pre>
       </div>
     `;
-    const layersInput = card.querySelector("[data-field=\"layers\"]");
     const nInput = card.querySelector("[data-field=\"n\"]");
     const alphaInput = card.querySelector("[data-field=\"alpha\"]");
-
-    layersInput?.addEventListener("change", (event) => {
-      const value = Number(event.target.value);
-      model.layers = Number.isFinite(value) && value > 0 ? value : 1;
-      renderModelSettings();
-    });
 
     nInput?.addEventListener("change", (event) => {
       if (!registry?.needs.includes("n")) {
@@ -1130,6 +1115,10 @@ function getSelectedPlants(scenario) {
 function updateFilters() {
   const scenario = getSelectedScenario();
   if (!scenario || !state.model) {
+    return;
+  }
+  if (!Number.isFinite(scenario.startYear) || !Number.isFinite(scenario.endYear)) {
+    updateSelect(elements.filterYear, [""], state.ui.filters.year, () => "Alle Jahre");
     return;
   }
   const selectedPlants = getSelectedPlants(scenario);
@@ -1206,7 +1195,9 @@ function applyFilters(rows) {
     if (state.ui.filters.year && String(row.year) !== state.ui.filters.year) {
       return false;
     }
-    if (search && !row.ttnr.toLowerCase().includes(search) && !row.name.toLowerCase().includes(search)) {
+    const ttnr = String(row.ttnr ?? "").toLowerCase();
+    const name = String(row.name ?? "").toLowerCase();
+    if (search && !ttnr.includes(search) && !name.includes(search)) {
       return false;
     }
     return true;
@@ -1403,8 +1394,26 @@ function validateAndCompute() {
   if (!scenario) {
     return;
   }
-  scenario.startYear = Number(elements.scenarioStart.value) || scenario.startYear;
-  scenario.endYear = Number(elements.scenarioEnd.value) || scenario.endYear;
+  const startInput = parseNumber(elements.scenarioStart.value);
+  const endInput = parseNumber(elements.scenarioEnd.value);
+  if (Number.isFinite(startInput)) {
+    scenario.startYear = startInput;
+  }
+  if (Number.isFinite(endInput)) {
+    scenario.endYear = endInput;
+  }
+  if (!Number.isFinite(scenario.startYear) || !Number.isFinite(scenario.endYear)) {
+    elements.calcHint.textContent = "Start- oder Endjahr fehlt.";
+    state.results = [];
+    renderResults();
+    return;
+  }
+  if (scenario.startYear > scenario.endYear) {
+    elements.calcHint.textContent = "Startjahr muss vor Endjahr liegen.";
+    state.results = [];
+    renderResults();
+    return;
+  }
   scenario.selectedYieldModelId = elements.modelSelect.value;
   if (!state.model.yieldModels.has(scenario.selectedYieldModelId)) {
     elements.calcHint.textContent = "Ungültiges Yield-Modell ausgewählt.";
