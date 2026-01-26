@@ -24,22 +24,19 @@ const requiredTables = [
   "plant_base_yields",
   "families",
   "chip_types",
-  "technologies",
-  "technology_years",
-  "chip_type_tech",
-  "yield_models"
+  "chip_type_tech"
 ];
 
 const yieldFields = ["EPI", "FAB", "VM", "SAW", "KGD", "OSAT", "EPI_SHIP"];
 
 const FAB_MODEL_REGISTRY = {
-  POISSON: {
+  YM_POI: {
     label: "Poisson",
     sql: "EXP(-D_year * A_cm2)",
     needs: [],
     compute: ({ D_year, A_cm2 }) => Math.exp(-D_year * A_cm2)
   },
-  MURPHY: {
+  YM_MUR: {
     label: "Murphy",
     sql: "(1 - EXP(-D_year * A_cm2)) / NULLIF(D_year * A_cm2, 0)",
     needs: [],
@@ -48,13 +45,13 @@ const FAB_MODEL_REGISTRY = {
       return x === 0 ? 1 : (1 - Math.exp(-x)) / x;
     }
   },
-  SEEDS: {
+  YM_SEEDS: {
     label: "Seeds",
     sql: "EXP(-SQRT(D_year * A_cm2))",
     needs: [],
     compute: ({ D_year, A_cm2 }) => Math.exp(-Math.sqrt(D_year * A_cm2))
   },
-  BOSE: {
+  YM_BOSE: {
     label: "Bose–Einstein",
     sql: "POWER(1 / (1 + D_year * A_cm2), n)",
     needs: ["n"],
@@ -63,7 +60,7 @@ const FAB_MODEL_REGISTRY = {
       return Math.pow(1 / (1 + D_year * A_cm2), n);
     }
   },
-  NEGBIN: {
+  YM_NEGBIN: {
     label: "Negative Binomial",
     sql: "POWER(1 + (D_year * A_cm2)/alpha, -alpha)",
     needs: ["alpha"],
@@ -73,6 +70,40 @@ const FAB_MODEL_REGISTRY = {
     }
   }
 };
+
+const HARD_CODED_YIELD_MODELS = [
+  { id: "YM_POI", name: "Poisson", alpha: 3.0, n: 1 },
+  { id: "YM_MUR", name: "Murphy", alpha: 3.0, n: 1 },
+  { id: "YM_SEEDS", name: "Seeds", alpha: 3.0, n: 1 },
+  { id: "YM_BOSE", name: "Bose–Einstein", alpha: 3.0, n: 1 },
+  { id: "YM_NEGBIN", name: "Negative Binomial", alpha: 3.0, n: 1 }
+];
+
+const HARD_CODED_TECHNOLOGIES = [
+  {
+    id: "TECH_CU",
+    plantId: "P1",
+    name: "Copper",
+    targetField: "FAB",
+    staticExtraPct: -1.0,
+    isDynamic: true,
+    description: "",
+    yearOverrides: {
+      2026: -1.5,
+      2028: -0.8
+    }
+  },
+  {
+    id: "TECH_LOWK",
+    plantId: "P1",
+    name: "LowK",
+    targetField: "FAB",
+    staticExtraPct: -0.5,
+    isDynamic: false,
+    description: "",
+    yearOverrides: {}
+  }
+];
 
 const tableNameMap = {
   scenario: "scenarios",
@@ -124,6 +155,7 @@ const elements = {
   runCalc: document.getElementById("run-calc"),
   calcHint: document.getElementById("calc-hint"),
   modelSettings: document.getElementById("model-settings"),
+  techSettings: document.getElementById("tech-settings"),
   dataOverview: document.getElementById("data-overview"),
   tablePreview: document.getElementById("table-preview"),
   filterSearch: document.getElementById("filter-search"),
@@ -534,6 +566,27 @@ function normalizeModelParam(value, fallback) {
   return { value: number, warning: false };
 }
 
+function cloneHardcodedYieldModels() {
+  return HARD_CODED_YIELD_MODELS.map((model) => ({
+    ...model,
+    paramWarnings: { alpha: false, n: false }
+  }));
+}
+
+function cloneHardcodedTechnologies() {
+  return HARD_CODED_TECHNOLOGIES.map((tech) => ({
+    ...tech,
+    yearOverrides: { ...tech.yearOverrides }
+  }));
+}
+
+function ensureTechnologyOverrides(model, techId) {
+  if (!model.technologyYears.has(techId)) {
+    model.technologyYears.set(techId, new Map());
+  }
+  return model.technologyYears.get(techId);
+}
+
 function buildDataModel(tables) {
   const errors = [];
   const warnings = [];
@@ -554,14 +607,10 @@ function buildDataModel(tables) {
     }
   });
 
-  (tables.yield_models || []).forEach((row) => {
-    const id = row.yield_model_id || row.id;
-    if (!id) {
-      return;
-    }
-    const registry = FAB_MODEL_REGISTRY[id];
+  cloneHardcodedYieldModels().forEach((row) => {
+    const registry = FAB_MODEL_REGISTRY[row.id];
     if (!registry) {
-      errors.push(`yield_models enthält unbekanntes yield_model_id ${id}`);
+      errors.push(`Hardcoded Modell nicht in Registry: ${row.id}`);
     }
     const alpha = normalizeModelParam(row.alpha, 3.0);
     const nValue = normalizeModelParam(row.n, 1);
@@ -569,19 +618,13 @@ function buildDataModel(tables) {
       alpha: alpha.warning,
       n: nValue.warning
     };
-    if (alpha.warning && registry?.needs.includes("alpha")) {
-      warnings.push(`alpha ungültig für Modell ${id}, Default 3.0 genutzt.`);
-    }
-    if (nValue.warning && registry?.needs.includes("n")) {
-      warnings.push(`n ungültig für Modell ${id}, Default 1 genutzt.`);
-    }
-    model.yieldModels.set(id, {
-      id,
-      name: row.name || registry?.label || id,
+    model.yieldModels.set(row.id, {
+      id: row.id,
+      name: row.name || registry?.label || row.id,
       alpha: alpha.value,
       n: nValue.value,
       paramWarnings,
-      sqlFormula: row.sql_formula || row.sql || registry?.sql || ""
+      sqlFormula: registry?.sql || ""
     });
   });
 
@@ -628,38 +671,26 @@ function buildDataModel(tables) {
     });
   });
 
-  (tables.technologies || []).forEach((row) => {
-    const plant = model.plants.get(row.plant_id);
+  cloneHardcodedTechnologies().forEach((row) => {
+    const plant = model.plants.get(row.plantId);
     if (!plant) {
-      errors.push(`technology ${row.tech_id || row.id} referenziert unbekanntes plant_id ${row.plant_id}`);
+      errors.push(`Hardcoded Technology ${row.id} referenziert unbekanntes plant_id ${row.plantId}`);
       return;
     }
-    const techId = row.tech_id || row.id;
-    plant.technologies.set(techId, {
-      id: techId,
-      plantId: row.plant_id,
+    plant.technologies.set(row.id, {
+      id: row.id,
+      plantId: row.plantId,
       name: row.name,
-      targetField: row.target_field,
-      staticExtraPct: parseNumber(row.static_extra_pct) ?? 0,
-      isDynamic: Number(row.is_dynamic) === 1,
+      targetField: row.targetField,
+      staticExtraPct: parseNumber(row.staticExtraPct) ?? 0,
+      isDynamic: Boolean(row.isDynamic),
       description: row.description || ""
     });
-  });
-
-  (tables.technology_years || []).forEach((row) => {
-    const techId = row.tech_id || row.technology_id || row.id;
-    if (!techId) {
-      return;
-    }
-    const target = findTechnology(model, techId);
-    if (!target) {
-      errors.push(`technology_years referenziert unbekanntes tech_id ${techId}`);
-      return;
-    }
-    if (!model.technologyYears.has(techId)) {
-      model.technologyYears.set(techId, new Map());
-    }
-    model.technologyYears.get(techId).set(Number(row.year), parseNumber(row.extra_pct) ?? 0);
+    const overrides = row.yearOverrides || {};
+    Object.entries(overrides).forEach(([year, value]) => {
+      const techOverrides = ensureTechnologyOverrides(model, row.id);
+      techOverrides.set(Number(year), parseNumber(value) ?? 0);
+    });
   });
 
   (tables.chip_types || []).forEach((row) => {
@@ -1032,6 +1063,10 @@ function renderModelSettings() {
       </div>
       <div class="model-grid">
         <div class="field">
+          <label class="label">Name</label>
+          <input class="input" type="text" data-field="name" value="${model.name || ""}" />
+        </div>
+        <div class="field">
           <label class="label">n ${nWarning ? "<span class=\"badge badge-warn\">Default</span>" : ""}</label>
           <input class="input" type="number" data-field="n" value="${registry?.needs.includes("n") ? model.n ?? "" : ""}" ${registry?.needs.includes("n") ? "" : "disabled"} />
         </div>
@@ -1045,8 +1080,15 @@ function renderModelSettings() {
         <pre class="sql-block">${registry?.sql || "-"}</pre>
       </div>
     `;
+    const nameInput = card.querySelector("[data-field=\"name\"]");
     const nInput = card.querySelector("[data-field=\"n\"]");
     const alphaInput = card.querySelector("[data-field=\"alpha\"]");
+
+    nameInput?.addEventListener("change", (event) => {
+      model.name = event.target.value;
+      renderModelSettings();
+      validateAndCompute();
+    });
 
     nInput?.addEventListener("change", (event) => {
       if (!registry?.needs.includes("n")) {
@@ -1071,6 +1113,167 @@ function renderModelSettings() {
     });
 
     elements.modelSettings.appendChild(card);
+  });
+}
+
+function renderTechnologySettings() {
+  if (!elements.techSettings) {
+    return;
+  }
+  elements.techSettings.innerHTML = "";
+  if (!state.model) {
+    elements.techSettings.innerHTML = "<p class=\"muted\">Keine Technologien geladen.</p>";
+    return;
+  }
+
+  const technologies = [];
+  state.model.plants.forEach((plant) => {
+    plant.technologies.forEach((tech) => {
+      technologies.push({ tech, plant });
+    });
+  });
+
+  if (technologies.length === 0) {
+    elements.techSettings.innerHTML = "<p class=\"muted\">Keine Technologien vorhanden.</p>";
+    return;
+  }
+
+  technologies.forEach(({ tech, plant }) => {
+    const card = document.createElement("div");
+    card.className = "card tech-card";
+    const overrides = ensureTechnologyOverrides(state.model, tech.id);
+    const overrideRows = Array.from(overrides.entries())
+      .sort((a, b) => a[0] - b[0])
+      .map(
+        ([year, extra]) => `
+        <div class="tech-year-row">
+          <input class="input" type="number" data-field="year" data-year="${year}" value="${year}" />
+          <input class="input" type="number" step="0.01" data-field="extra" data-year="${year}" value="${extra}" />
+          <button class="btn btn-secondary" type="button" data-action="remove-year" data-year="${year}">Entfernen</button>
+        </div>
+      `
+      )
+      .join("");
+
+    card.innerHTML = `
+      <div class="model-header">
+        <div>
+          <h3>${tech.name}</h3>
+          <div class="muted">ID: ${tech.id} · Werk: ${plant.name || plant.id}</div>
+        </div>
+        <div class="badge">${tech.targetField}</div>
+      </div>
+      <div class="model-grid">
+        <div class="field">
+          <label class="label">Name</label>
+          <input class="input" type="text" data-field="name" value="${tech.name || ""}" />
+        </div>
+        <div class="field">
+          <label class="label">Yield-Stufe</label>
+          <select class="input" data-field="targetField">
+            ${yieldFields.map((field) => `<option value="${field}" ${field === tech.targetField ? "selected" : ""}>${field}</option>`).join("")}
+          </select>
+        </div>
+        <div class="field">
+          <label class="label">Extra % (statisch)</label>
+          <input class="input" type="number" step="0.01" data-field="staticExtraPct" value="${tech.staticExtraPct ?? 0}" />
+        </div>
+        <div class="field checkbox-field">
+          <label class="label">Dynamisch</label>
+          <label class="checkbox-label">
+            <input type="checkbox" data-field="isDynamic" ${tech.isDynamic ? "checked" : ""} />
+            Jahres-Overrides verwenden
+          </label>
+        </div>
+      </div>
+      <div class="tech-years">
+        <div class="tech-years-header">
+          <div class="label">Jahres-Overrides</div>
+          <button class="btn btn-secondary" type="button" data-action="add-year">Jahr hinzufügen</button>
+        </div>
+        <div class="tech-year-list">
+          ${overrideRows || "<p class=\"muted\">Keine Overrides definiert.</p>"}
+        </div>
+      </div>
+    `;
+
+    const nameInput = card.querySelector("[data-field=\"name\"]");
+    const targetSelect = card.querySelector("[data-field=\"targetField\"]");
+    const staticInput = card.querySelector("[data-field=\"staticExtraPct\"]");
+    const dynamicToggle = card.querySelector("[data-field=\"isDynamic\"]");
+
+    nameInput?.addEventListener("change", (event) => {
+      tech.name = event.target.value;
+      renderTechnologySettings();
+      validateAndCompute();
+    });
+
+    targetSelect?.addEventListener("change", (event) => {
+      tech.targetField = event.target.value;
+      renderTechnologySettings();
+      validateAndCompute();
+    });
+
+    staticInput?.addEventListener("change", (event) => {
+      tech.staticExtraPct = parseNumber(event.target.value) ?? 0;
+      renderTechnologySettings();
+      validateAndCompute();
+    });
+
+    dynamicToggle?.addEventListener("change", (event) => {
+      tech.isDynamic = event.target.checked;
+      renderTechnologySettings();
+      validateAndCompute();
+    });
+
+    card.querySelectorAll("[data-field=\"extra\"]").forEach((input) => {
+      input.addEventListener("change", (event) => {
+        const year = Number(event.target.dataset.year);
+        const value = parseNumber(event.target.value) ?? 0;
+        overrides.set(year, value);
+        renderTechnologySettings();
+        validateAndCompute();
+      });
+    });
+
+    card.querySelectorAll("[data-field=\"year\"]").forEach((input) => {
+      input.addEventListener("change", (event) => {
+        const prevYear = Number(event.target.dataset.year);
+        const nextYear = Number(event.target.value);
+        if (!Number.isFinite(nextYear)) {
+          return;
+        }
+        const currentValue = overrides.get(prevYear) ?? 0;
+        overrides.delete(prevYear);
+        overrides.set(nextYear, currentValue);
+        renderTechnologySettings();
+        validateAndCompute();
+      });
+    });
+
+    card.querySelectorAll("[data-action=\"remove-year\"]").forEach((button) => {
+      button.addEventListener("click", (event) => {
+        const year = Number(event.target.dataset.year);
+        overrides.delete(year);
+        renderTechnologySettings();
+        validateAndCompute();
+      });
+    });
+
+    card.querySelector("[data-action=\"add-year\"]")?.addEventListener("click", () => {
+      const years = Array.from(overrides.keys());
+      const baseYear =
+        (state.model?.scenarios?.[0]?.startYear && Number(state.model.scenarios[0].startYear)) ||
+        new Date().getFullYear();
+      const nextYear = years.length ? Math.max(...years) + 1 : baseYear;
+      if (!overrides.has(nextYear)) {
+        overrides.set(nextYear, tech.staticExtraPct ?? 0);
+      }
+      renderTechnologySettings();
+      validateAndCompute();
+    });
+
+    elements.techSettings.appendChild(card);
   });
 }
 
@@ -1295,6 +1498,7 @@ function applyImport({ tables, fileName, fileMetaText }) {
   renderScenarioOptions();
   updateScenarioUi();
   renderModelSettings();
+  renderTechnologySettings();
   renderDataOverview();
   const firstTableName = Object.keys(tables)[0];
   if (firstTableName) {
