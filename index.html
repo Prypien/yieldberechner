@@ -3,236 +3,173 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Chip Yield Calculator</title>
+  <title>Yield Berechner</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <header class="app-header">
-    <div class="app-header-inner">
+    <div class="container header-content">
       <div>
-        <h1>Chip Yield Calculator</h1>
-        <p class="header-subtitle">Web-Tool zur deterministischen Yield-Berechnung mit Beispieldaten.</p>
+        <p class="eyebrow">Yield Suite</p>
+        <h1>Yield Berechner</h1>
+        <p class="subtitle">Deterministische Yield-Berechnung mit Excel-Datenbasis – komplett offline.</p>
+      </div>
+      <div class="status-card" id="import-status-card">
+        <div class="status-title">Import Status</div>
+        <div id="import-status" class="status-pill status-ok">Bereit – keine Datei geladen.</div>
+        <div id="import-details" class="status-details"></div>
       </div>
     </div>
   </header>
 
-  <nav class="tabs" aria-label="Workflow Navigation">
-    <div class="tabs-inner">
+  <nav class="tabs" aria-label="Hauptnavigation">
+    <div class="container tabs-inner">
       <button class="tab-btn active" data-tab="setup">Setup</button>
       <button class="tab-btn" data-tab="data">Daten</button>
       <button class="tab-btn" data-tab="results">Ergebnisse</button>
     </div>
   </nav>
 
-  <main class="content">
-    <div class="content-inner">
-      <section id="tab-setup" class="tab-panel active">
-        <div class="panel-header">
-          <h2>Setup</h2>
-          <div id="scenario-status" class="status-block status-valid" aria-live="polite">✅ gültig</div>
+  <main class="container">
+    <section id="tab-setup" class="tab-panel active">
+      <div class="panel-header">
+        <h2>Setup</h2>
+        <p class="muted">Lade eine XLSX-Datenbasis und wähle das gewünschte Szenario.</p>
+      </div>
+      <div class="panel-grid">
+        <div class="card">
+          <h3>Datenbasis (XLSX)</h3>
+          <label class="file-input" for="xlsx-input">
+            <input id="xlsx-input" type="file" accept=".xlsx" />
+            <span>Datei auswählen</span>
+          </label>
+          <div class="file-meta" id="file-meta">Noch keine Datei ausgewählt.</div>
+          <div class="inline-note">Tipp: Es liegt eine Beispiel-Datei <code>yield_data_basis.xlsx</code> im Repo.</div>
         </div>
-        <div class="panel-body">
-          <div class="panel-grid">
-            <div class="card">
-              <h3>Scenario &amp; Jahre</h3>
-              <div class="form-grid">
-                <div class="field">
-                  <label class="label" for="scenario-select">Szenario</label>
-                  <div class="scenario-row">
-                    <select id="scenario-select" class="input input-large"></select>
-                    <button id="add-scenario" class="btn btn-secondary" type="button">+ Szenario</button>
-                  </div>
-                </div>
-                <div class="field">
-                  <label class="label" for="scenario-name">Name</label>
-                  <input id="scenario-name" class="input input-large" type="text" placeholder="z. B. Baseline 2025" />
-                </div>
-                <div class="field">
-                  <label class="label" for="plant-select">Werk</label>
-                  <select id="plant-select" class="input"></select>
-                </div>
-                <div class="field">
-                  <label class="label" for="model-select">Yield-Modell</label>
-                  <select id="model-select" class="input"></select>
-                </div>
-                <div class="field">
-                  <label class="label" for="scenario-start">Startjahr</label>
-                  <input id="scenario-start" class="input input-number" type="number" min="0" step="1" inputmode="numeric" placeholder="2025" />
-                </div>
-                <div class="field">
-                  <label class="label" for="scenario-end">Endjahr</label>
-                  <input id="scenario-end" class="input input-number" type="number" min="0" step="1" inputmode="numeric" placeholder="2030" />
-                </div>
-                <div class="field scenario-error">
-                  <span id="scenario-error" class="error-text" role="alert"></span>
-                </div>
-              </div>
-            </div>
 
-            <div class="card">
-              <h3>Datenbasis</h3>
-              <p class="muted-text">Aktiv: Beispiel-Daten (lokal, ohne Import).</p>
-              <div class="status-stack">
-                <div class="status-label">Status</div>
-                <div id="validation-status" class="status-block status-valid">✅ gültig</div>
-                <div id="validation-details" class="status-details"></div>
-              </div>
-            </div>
-          </div>
-
-          <div class="card">
-            <div class="card-header">
-              <h3>Sanity Check</h3>
-              <button id="sanity-check" class="btn" type="button">Sanity Check</button>
-            </div>
-            <div class="sanity-status" id="sanity-status">Noch nicht ausgeführt.</div>
-            <ul class="sanity-list" id="sanity-list"></ul>
-          </div>
-
-          <div class="card">
-            <div class="card-header">
-              <h3>SQL Überblick</h3>
-              <span class="hint">Beispiel-Daten &amp; Queries (nur relevante Spalten)</span>
-            </div>
-            <pre class="sql-block" id="sql-snapshot"></pre>
-          </div>
-        </div>
-      </section>
-
-      <section id="tab-data" class="tab-panel">
-        <div class="panel-header">
-          <h2>Daten</h2>
-          <div class="meta-badge">Startjahr der Berechnung: <span id="calc-start-year"></span></div>
-        </div>
-        <div class="panel-body">
-          <details open class="accordion">
-            <summary>Families</summary>
-            <div class="table-scroll">
-              <table class="table" id="families-table">
-                <thead>
-                  <tr>
-                    <th>Familie</th>
-                    <th>Defect Density D0</th>
-                    <th>D<sub>in</sub></th>
-                    <th>t</th>
-                    <th>t<sub>start</sub></th>
-                  </tr>
-                </thead>
-                <tbody></tbody>
-              </table>
-            </div>
-          </details>
-
-          <details open class="accordion">
-            <summary>Chip-Typen</summary>
-            <div class="table-scroll">
-              <table class="table" id="types-table">
-                <thead>
-                  <tr>
-                    <th>TTNR</th>
-                    <th>Beschreibung</th>
-                    <th>Familie</th>
-                    <th>Package</th>
-                    <th>Die Area (mm²)</th>
-                    <th>C/W</th>
-                    <th>Technologien</th>
-                    <th>Sonderstartjahr <span class="col-hint">0 = immer</span></th>
-                  </tr>
-                </thead>
-                <tbody></tbody>
-              </table>
-            </div>
-          </details>
-
-          <details open class="accordion">
-            <summary>Technologien</summary>
-            <div class="table-scroll">
-              <table class="table" id="tech-table">
-                <thead>
-                  <tr>
-                    <th>Name</th>
-                    <th>Beschreibung</th>
-                    <th>Ziel-Feld</th>
-                    <th>Extra Yield [%]</th>
-                    <th>Dynamisch</th>
-                  </tr>
-                </thead>
-                <tbody></tbody>
-              </table>
-            </div>
-            <div id="tech-years"></div>
-          </details>
-        </div>
-      </section>
-
-      <section id="tab-results" class="tab-panel">
-        <div class="panel-header">
-          <h2>Ergebnisse</h2>
-        </div>
-        <div class="panel-body">
-          <div class="filters">
+        <div class="card">
+          <h3>Szenario &amp; Berechnung</h3>
+          <div class="form-grid">
             <div class="field">
-              <label class="label" for="filter-ttnr">Suche TTNR</label>
-              <input id="filter-ttnr" class="input" type="search" placeholder="TTNR" />
+              <label class="label" for="scenario-select">Szenario</label>
+              <select id="scenario-select" class="input"></select>
             </div>
             <div class="field">
-              <label class="label" for="filter-family">Family Filter</label>
-              <select id="filter-family" class="input"></select>
+              <label class="label" for="scenario-name">Name</label>
+              <input id="scenario-name" class="input" type="text" readonly />
             </div>
             <div class="field">
-              <label class="label" for="filter-year">Year Filter</label>
-              <select id="filter-year" class="input"></select>
+              <label class="label" for="scenario-start">Startjahr</label>
+              <input id="scenario-start" class="input" type="number" />
+            </div>
+            <div class="field">
+              <label class="label" for="scenario-end">Endjahr</label>
+              <input id="scenario-end" class="input" type="number" />
+            </div>
+            <div class="field">
+              <label class="label" for="model-select">Yield-Modell</label>
+              <select id="model-select" class="input"></select>
+            </div>
+            <div class="field">
+              <label class="label" for="plant-select">Werke</label>
+              <select id="plant-select" class="input" multiple></select>
             </div>
           </div>
-
-          <div class="results-layout">
-            <div class="table-scroll tall">
-              <table class="table sticky results-table" id="results-table">
-                <thead>
-                  <tr class="group">
-                    <th colspan="5">Stammdaten</th>
-                    <th colspan="8">Yield-Stationen</th>
-                  </tr>
-                  <tr class="sub">
-                    <th>Jahr</th>
-                    <th>TTNR</th>
-                    <th>Beschreibung</th>
-                    <th>Familie</th>
-                    <th>Package</th>
-                    <th>EPI</th>
-                    <th>FAB</th>
-                    <th>VM</th>
-                    <th>Sägen</th>
-                    <th>KGD</th>
-                    <th>OSAT</th>
-                    <th>EPI-Auslieferung</th>
-                    <th>Total Yield</th>
-                  </tr>
-                </thead>
-                <tbody></tbody>
-              </table>
-            </div>
-
-            <aside class="sidepanel" id="detail-panel">
-              <div class="sidepanel-header">
-                <h3>Details</h3>
-                <div id="detail-status" class="status-pill">Keine Auswahl</div>
-              </div>
-              <div class="sidepanel-body" id="detail-body">
-                <p class="muted-text">Wähle eine Zeile aus der Ergebnistabelle, um Details zu sehen.</p>
-              </div>
-              <div class="sidepanel-footer">
-                <div class="sidepanel-footer-header">
-                  <h4>SQL Preview</h4>
-                  <button id="copy-sql" class="btn btn-secondary" type="button">Copy</button>
-                </div>
-                <pre id="sql-preview" class="sql-block small"></pre>
-              </div>
-            </aside>
+          <div class="inline-actions">
+            <button id="run-calc" class="btn">Berechnung aktualisieren</button>
+            <span id="calc-hint" class="muted">Bereit.</span>
           </div>
         </div>
-      </section>
-    </div>
+      </div>
+
+      <div class="card">
+        <h3>Letzter Import</h3>
+        <div class="import-summary" id="import-summary">Noch keine Import-Historie vorhanden.</div>
+      </div>
+    </section>
+
+    <section id="tab-data" class="tab-panel">
+      <div class="panel-header">
+        <h2>Datenbasis</h2>
+        <p class="muted">Read-only Übersicht der geladenen Tabellen.</p>
+      </div>
+      <div class="card">
+        <div class="data-overview" id="data-overview"></div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <h3>Tabellen-Vorschau</h3>
+          <div class="muted">Ausgewählte Tabelle (max. 8 Zeilen)</div>
+        </div>
+        <div class="table-scroll" id="table-preview"></div>
+      </div>
+    </section>
+
+    <section id="tab-results" class="tab-panel">
+      <div class="panel-header">
+        <h2>Ergebnisse</h2>
+        <p class="muted">Filtere, sortiere und inspiziere die berechneten Yields.</p>
+      </div>
+      <div class="filters">
+        <div class="field">
+          <label class="label" for="filter-search">Suche TTNR/Name</label>
+          <input id="filter-search" class="input" type="search" placeholder="TTNR oder Name" />
+        </div>
+        <div class="field">
+          <label class="label" for="filter-plant">Werk</label>
+          <select id="filter-plant" class="input"></select>
+        </div>
+        <div class="field">
+          <label class="label" for="filter-family">Family</label>
+          <select id="filter-family" class="input"></select>
+        </div>
+        <div class="field">
+          <label class="label" for="filter-year">Jahr</label>
+          <select id="filter-year" class="input"></select>
+        </div>
+      </div>
+
+      <div class="results-layout">
+        <div class="table-scroll tall">
+          <table class="table sticky" id="results-table">
+            <thead>
+              <tr>
+                <th data-sort="year">Year</th>
+                <th data-sort="ttnr">TTNR</th>
+                <th>Name</th>
+                <th>Plant</th>
+                <th>Family</th>
+                <th data-sort="fab">FAB</th>
+                <th>EPI</th>
+                <th>VM</th>
+                <th>SAW</th>
+                <th>KGD</th>
+                <th>OSAT</th>
+                <th>EPI_SHIP</th>
+                <th data-sort="total">TOTAL</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <aside class="sidepanel" id="detail-panel" aria-live="polite">
+          <div class="sidepanel-header">
+            <h3>Details</h3>
+            <button id="close-panel" class="btn btn-secondary" type="button">Schließen</button>
+          </div>
+          <div class="sidepanel-body" id="detail-body">
+            <p class="muted">Wähle eine Zeile, um Details zu sehen.</p>
+          </div>
+          <div class="sidepanel-footer">
+            <div class="sidepanel-footer-header">
+              <h4>SQL Preview</h4>
+              <button id="copy-sql" class="btn btn-secondary" type="button">Copy</button>
+            </div>
+            <pre id="sql-preview" class="sql-block"></pre>
+          </div>
+        </aside>
+      </div>
+    </section>
   </main>
 
   <script src="app.js"></script>
