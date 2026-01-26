@@ -14,8 +14,6 @@ plant_base_yields,,,,,,P2,,KGD,0.98,,,,,,,,,,,,,,,,,
 plant_base_yields,,,,,,P2,,OSAT,0.97,,,,,,,,,,,,,,,,,
 plant_base_yields,,,,,,P2,,EPI_SHIP,0.98,,,,,,,,,,,,,,,,,
 scenarios,S1,Baseline,2026.0,2030.0,YM_POI,,,,,,,,,,,,,,,,,,,,,
-yield_models,,Poisson,,,,,,,,,,,,,,,,0.0,,,,,,,YM_POI,exp(-D*A)
-yield_models,,Murphy,,,,,,,,,,,,,,,,0.0,,,,,,,YM_MUR,((1-exp(-D*A))/ (D*A))^2
 families,,CPU Family,,,,P1,,,,,F_CPU,0.12,0.02,1.0,2026.0,,,,,,,,,,,
 families,,CPU Family,,,,P2,,,,,F_CPU,0.12,0.02,1.0,2026.0,,,,,,,,,,,
 chip_types,,,,,,P1,,,,,F_CPU,,,,,CPU-001,85.0,12.0,,,,,,,,
