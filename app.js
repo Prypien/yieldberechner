@@ -145,8 +145,7 @@ function normalizeTableName(name) {
   return tableNameMap[key] || name;
 }
 
-async function parseXlsxToTables(file) {
-  const arrayBuffer = await file.arrayBuffer();
+async function parseXlsxArrayBuffer(arrayBuffer) {
   const zipEntries = await unzipXlsx(arrayBuffer);
   const workbookXml = getZipText(zipEntries, "xl/workbook.xml");
   const workbookRels = getZipText(zipEntries, "xl/_rels/workbook.xml.rels");
@@ -173,6 +172,11 @@ async function parseXlsxToTables(file) {
   });
 
   return tables;
+}
+
+async function parseXlsxToTables(file) {
+  const arrayBuffer = await file.arrayBuffer();
+  return parseXlsxArrayBuffer(arrayBuffer);
 }
 
 function normalizeRow(row) {
@@ -964,6 +968,63 @@ function closeDetails() {
   elements.sqlPreview.textContent = "";
 }
 
+function applyImport({ tables, fileName, fileMetaText }) {
+  state.tables = tables;
+  const { model, errors, warnings } = buildDataModel(tables);
+  state.model = model;
+  state.validation = { errors, warnings };
+  renderScenarioOptions();
+  updateScenarioUi();
+  renderDataOverview();
+  const firstTableName = Object.keys(tables)[0];
+  if (firstTableName) {
+    renderTablePreview(firstTableName, tables[firstTableName] || []);
+  } else {
+    elements.tablePreview.innerHTML = "<p class=\"muted\">Keine Tabellen gefunden.</p>";
+  }
+  updateValidationStatus();
+  validateAndCompute();
+
+  if (fileMetaText) {
+    elements.fileMeta.textContent = fileMetaText;
+  }
+
+  const summary = {
+    fileName,
+    timestamp: new Date().toLocaleString("de-DE"),
+    scenario: getSelectedScenario()?.id || ""
+  };
+  saveImportSummary(summary);
+  updateImportSummary(summary);
+}
+
+async function loadDefaultXlsx() {
+  try {
+    setImportStatus({ status: "status-ok", message: "Standard-Datenbasis wird geladen…", details: "" });
+    const response = await fetch("yield_data_basis.xlsx");
+    if (!response.ok) {
+      throw new Error("Standard-Datei nicht gefunden.");
+    }
+    const arrayBuffer = await response.arrayBuffer();
+    const tables = await parseXlsxArrayBuffer(arrayBuffer);
+    const contentLength = response.headers.get("content-length");
+    const sizeKb = contentLength ? Math.round(Number(contentLength) / 1024) : null;
+    const sizeLabel = sizeKb ? `${sizeKb} KB` : "Größe unbekannt";
+    applyImport({
+      tables,
+      fileName: "yield_data_basis.xlsx",
+      fileMetaText: `Automatisch geladen: yield_data_basis.xlsx (${sizeLabel})`
+    });
+  } catch (error) {
+    setImportStatus({
+      status: "status-warn",
+      message: "Automatischer Import fehlgeschlagen",
+      details: `<p>${error.message}</p>`
+    });
+    elements.fileMeta.textContent = "Automatischer Import fehlgeschlagen.";
+  }
+}
+
 function handleSortClick(event) {
   const key = event.target.getAttribute("data-sort");
   if (!key) {
@@ -1062,29 +1123,11 @@ function initEvents() {
     try {
       setImportStatus({ status: "status-ok", message: "Import läuft…", details: "" });
       const tables = await parseXlsxToTables(file);
-      state.tables = tables;
-      const { model, errors, warnings } = buildDataModel(tables);
-      state.model = model;
-      state.validation = { errors, warnings };
-      renderScenarioOptions();
-      updateScenarioUi();
-      renderDataOverview();
-      const firstTableName = Object.keys(tables)[0];
-      if (firstTableName) {
-        renderTablePreview(firstTableName, tables[firstTableName] || []);
-      } else {
-        elements.tablePreview.innerHTML = "<p class=\"muted\">Keine Tabellen gefunden.</p>";
-      }
-      updateValidationStatus();
-      validateAndCompute();
-
-      const summary = {
+      applyImport({
+        tables,
         fileName: file.name,
-        timestamp: new Date().toLocaleString("de-DE"),
-        scenario: getSelectedScenario()?.id || ""
-      };
-      saveImportSummary(summary);
-      updateImportSummary(summary);
+        fileMetaText: `${file.name} (${Math.round(file.size / 1024)} KB)`
+      });
     } catch (error) {
       state.validation.errors = [error.message];
       updateValidationStatus();
@@ -1154,7 +1197,8 @@ function init() {
   elements.filterFamily.value = state.ui.filters.family;
   elements.filterYear.value = state.ui.filters.year;
   initEvents();
-  setImportStatus({ status: "status-ok", message: "Bereit – keine Datei geladen.", details: "" });
+  setImportStatus({ status: "status-ok", message: "Bereit – Standarddaten werden geladen.", details: "" });
+  loadDefaultXlsx();
 }
 
 init();
