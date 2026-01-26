@@ -25,6 +25,7 @@
   <nav class="tabs" aria-label="Hauptnavigation">
     <div class="container tabs-inner">
       <button class="tab-btn active" data-tab="setup">Setup</button>
+      <button class="tab-btn" data-tab="settings">Globale Einstellungen</button>
       <button class="tab-btn" data-tab="data">Daten</button>
       <button class="tab-btn" data-tab="results">Ergebnisse</button>
     </div>
@@ -86,6 +87,14 @@
         <h3>Letzter Import</h3>
         <div class="import-summary" id="import-summary">Noch keine Import-Historie vorhanden.</div>
       </div>
+    </section>
+
+    <section id="tab-settings" class="tab-panel">
+      <div class="panel-header">
+        <h2>Globale Einstellungen</h2>
+        <p class="muted">Bearbeite die Berechnungsarten und deren Parameter. Die Formel kommt aus der festen Registry.</p>
+      </div>
+      <div class="settings-grid" id="model-settings"></div>
     </section>
 
     <section id="tab-data" class="tab-panel">

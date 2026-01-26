@@ -411,6 +411,44 @@ code {
   font-weight: 600;
 }
 
+.badge.badge-warn {
+  background: #fff6e5;
+  color: var(--warn);
+}
+
+.settings-grid {
+  display: grid;
+  gap: 20px;
+}
+
+.model-card h3 {
+  margin: 0;
+}
+
+.model-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.model-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.model-formula .sql-block {
+  margin: 8px 0 0;
+}
+
+.model-card .input[disabled] {
+  background: #f2f4f8;
+  color: var(--muted);
+}
+
 @media (max-width: 960px) {
   .results-layout {
     grid-template-columns: 1fr;
