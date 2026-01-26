@@ -13,6 +13,8 @@ const numericFields = new Set([
   "extra_pct",
   "base_yield",
   "layers",
+  "alpha",
+  "n",
   "is_dynamic"
 ]);
 
@@ -30,6 +32,48 @@ const requiredTables = [
 ];
 
 const yieldFields = ["EPI", "FAB", "VM", "SAW", "KGD", "OSAT", "EPI_SHIP"];
+
+const FAB_MODEL_REGISTRY = {
+  POISSON: {
+    label: "Poisson",
+    sql: "EXP(-D_year * A_cm2)",
+    needs: [],
+    compute: ({ D_year, A_cm2 }) => Math.exp(-D_year * A_cm2)
+  },
+  MURPHY: {
+    label: "Murphy",
+    sql: "(1 - EXP(-D_year * A_cm2)) / NULLIF(D_year * A_cm2, 0)",
+    needs: [],
+    compute: ({ D_year, A_cm2 }) => {
+      const x = D_year * A_cm2;
+      return x === 0 ? 1 : (1 - Math.exp(-x)) / x;
+    }
+  },
+  SEEDS: {
+    label: "Seeds",
+    sql: "EXP(-SQRT(D_year * A_cm2))",
+    needs: [],
+    compute: ({ D_year, A_cm2 }) => Math.exp(-Math.sqrt(D_year * A_cm2))
+  },
+  BOSE: {
+    label: "Bose–Einstein",
+    sql: "POWER(1 / (1 + D_year * A_cm2), n)",
+    needs: ["n"],
+    compute: ({ D_year, A_cm2, params }) => {
+      const n = Number(params?.n ?? 1);
+      return Math.pow(1 / (1 + D_year * A_cm2), n);
+    }
+  },
+  NEGBIN: {
+    label: "Negative Binomial",
+    sql: "POWER(1 + (D_year * A_cm2)/alpha, -alpha)",
+    needs: ["alpha"],
+    compute: ({ D_year, A_cm2, params }) => {
+      const alpha = Number(params?.alpha ?? 3.0);
+      return Math.pow(1 + (D_year * A_cm2) / alpha, -alpha);
+    }
+  }
+};
 
 const tableNameMap = {
   scenario: "scenarios",
@@ -80,6 +124,7 @@ const elements = {
   plantSelect: document.getElementById("plant-select"),
   runCalc: document.getElementById("run-calc"),
   calcHint: document.getElementById("calc-hint"),
+  modelSettings: document.getElementById("model-settings"),
   dataOverview: document.getElementById("data-overview"),
   tablePreview: document.getElementById("table-preview"),
   filterSearch: document.getElementById("filter-search"),
@@ -130,6 +175,29 @@ function clamp01(value) {
     return 0;
   }
   return Math.min(1, Math.max(0, value));
+}
+
+function formatDecimal(value, decimals = 4) {
+  if (value === null || value === undefined || Number.isNaN(value)) {
+    return "-";
+  }
+  const number = Number(value);
+  if (!Number.isFinite(number)) {
+    return "-";
+  }
+  if (Number.isInteger(number)) {
+    return number.toString();
+  }
+  return number.toFixed(decimals);
+}
+
+function substituteSql(template, values) {
+  let output = template;
+  Object.entries(values).forEach(([key, value]) => {
+    const formatted = formatDecimal(value);
+    output = output.replace(new RegExp(`\\b${key}\\b`, "g"), formatted);
+  });
+  return output;
 }
 
 function parseNumber(value) {
@@ -459,6 +527,14 @@ function columnIndex(column) {
   return index - 1;
 }
 
+function normalizeModelParam(value, fallback) {
+  const number = Number(value);
+  if (!Number.isFinite(number) || number <= 0) {
+    return { value: fallback, warning: true };
+  }
+  return { value: number, warning: false };
+}
+
 function buildDataModel(tables) {
   const errors = [];
   const warnings = [];
@@ -480,11 +556,36 @@ function buildDataModel(tables) {
   });
 
   (tables.yield_models || []).forEach((row) => {
-    model.yieldModels.set(row.yield_model_id || row.id, {
-      id: row.yield_model_id || row.id,
-      name: row.name,
-      sqlFormula: row.sql_formula || row.sql,
-      layers: row.layers
+    const id = row.yield_model_id || row.id;
+    if (!id) {
+      return;
+    }
+    const registry = FAB_MODEL_REGISTRY[id];
+    if (!registry) {
+      errors.push(`yield_models enthält unbekanntes yield_model_id ${id}`);
+    }
+    const layersValue = Number(row.layers);
+    const layers = Number.isFinite(layersValue) ? layersValue : 1;
+    const alpha = normalizeModelParam(row.alpha, 3.0);
+    const nValue = normalizeModelParam(row.n, 1);
+    const paramWarnings = {
+      alpha: alpha.warning,
+      n: nValue.warning
+    };
+    if (alpha.warning && registry?.needs.includes("alpha")) {
+      warnings.push(`alpha ungültig für Modell ${id}, Default 3.0 genutzt.`);
+    }
+    if (nValue.warning && registry?.needs.includes("n")) {
+      warnings.push(`n ungültig für Modell ${id}, Default 1 genutzt.`);
+    }
+    model.yieldModels.set(id, {
+      id,
+      name: row.name || registry?.label || id,
+      layers,
+      alpha: alpha.value,
+      n: nValue.value,
+      paramWarnings,
+      sqlFormula: row.sql_formula || row.sql || registry?.sql || ""
     });
   });
 
@@ -619,6 +720,17 @@ function buildDataModel(tables) {
     });
   });
 
+  model.scenarios.forEach((scenario) => {
+    if (!scenario.selectedYieldModelId) {
+      return;
+    }
+    if (!model.yieldModels.has(scenario.selectedYieldModelId)) {
+      errors.push(
+        `scenarios selected_yield_model_id unbekannt: ${scenario.selectedYieldModelId}`
+      );
+    }
+  });
+
   (tables.scenario_plants || []).forEach((row) => {
     const scenarioId = row.scenario_id;
     const plantId = row.plant_id;
@@ -669,19 +781,36 @@ function computeDefectDensity(family, yIdx) {
   return (family.D0 || 0) + (family.D_in || 0) * Math.exp(-(family.t || 0) * time);
 }
 
-function computeFabYield(modelKey, D_year, A_cm2) {
-  const base = D_year * A_cm2;
-  if (modelKey?.includes("murphy")) {
-    return base === 0 ? 1 : (1 - Math.exp(-base)) / base;
+function computeFabYield(modelKey, D_year, A_cm2, params) {
+  const registry = FAB_MODEL_REGISTRY[modelKey];
+  if (!registry) {
+    return 0;
   }
-  if (modelKey?.includes("neg")) {
-    const alpha = 3.0;
-    return Math.pow(1 + base / alpha, -alpha);
+  const value = registry.compute({ D_year, A_cm2, params });
+  return clamp01(value);
+}
+
+function buildFabBreakdown(modelKey, D_year, A_cm2, params) {
+  const registry = FAB_MODEL_REGISTRY[modelKey];
+  if (!registry) {
+    return null;
   }
-  if (modelKey?.includes("seed")) {
-    return Math.exp(-base * 0.92);
+  const inputs = { D_year, A_cm2 };
+  if (registry.needs.includes("alpha")) {
+    inputs.alpha = params?.alpha ?? 3.0;
   }
-  return Math.exp(-base);
+  if (registry.needs.includes("n")) {
+    inputs.n = params?.n ?? 1;
+  }
+  const result = computeFabYield(modelKey, D_year, A_cm2, params);
+  const sqlSubstituted = substituteSql(registry.sql, inputs);
+  return {
+    modelKey,
+    sqlTemplate: registry.sql,
+    sqlSubstituted,
+    inputs,
+    result
+  };
 }
 
 function getDynamicExtraPct(model, technology, year) {
@@ -711,8 +840,10 @@ function computeResults({ scenario, plantsData, yieldModels, chipTypeTech, model
   }
 
   plantsData.forEach((plant) => {
-    const selectedModel = yieldModels.get(plant.overrideModelId || scenario.selectedYieldModelId) ||
-      yieldModels.values().next().value;
+    const selectedModel = yieldModels.get(plant.overrideModelId || scenario.selectedYieldModelId);
+    if (!selectedModel) {
+      return;
+    }
     plant.chipTypes.forEach((chip) => {
       years.forEach((year) => {
         if (chip.specialStartYear && year < chip.specialStartYear) {
@@ -722,7 +853,8 @@ function computeResults({ scenario, plantsData, yieldModels, chipTypeTech, model
         const yIdx = year - yearStart;
         const D_year = computeDefectDensity(family, yIdx);
         const A_cm2 = (chip.dieArea || 0) / 100;
-        const fabYield = clamp01(computeFabYield(selectedModel?.id || "", D_year, A_cm2));
+        const fabYield = computeFabYield(selectedModel.id, D_year, A_cm2, selectedModel);
+        const fabBreakdown = buildFabBreakdown(selectedModel.id, D_year, A_cm2, selectedModel);
 
         const baseYields = {};
         yieldFields.forEach((field) => {
@@ -765,6 +897,9 @@ function computeResults({ scenario, plantsData, yieldModels, chipTypeTech, model
           A_cm2,
           yields: baseYields,
           total,
+          breakdowns: {
+            FAB: fabBreakdown
+          },
           techDetails,
           model: selectedModel
         });
@@ -873,6 +1008,85 @@ function renderYieldModels(scenario) {
     elements.modelSelect.appendChild(option);
   });
   elements.modelSelect.value = scenario.selectedYieldModelId || Array.from(state.model.yieldModels.keys())[0];
+}
+
+function renderModelSettings() {
+  if (!elements.modelSettings) {
+    return;
+  }
+  elements.modelSettings.innerHTML = "";
+  if (!state.model) {
+    elements.modelSettings.innerHTML = "<p class=\"muted\">Keine Modelle geladen.</p>";
+    return;
+  }
+
+  state.model.yieldModels.forEach((model) => {
+    const registry = FAB_MODEL_REGISTRY[model.id];
+    const card = document.createElement("div");
+    card.className = "card model-card";
+    const alphaWarning = model.paramWarnings?.alpha && registry?.needs.includes("alpha");
+    const nWarning = model.paramWarnings?.n && registry?.needs.includes("n");
+    card.innerHTML = `
+      <div class="model-header">
+        <div>
+          <h3>${model.name}</h3>
+          <div class="muted">ID: ${model.id}</div>
+        </div>
+        <div class="badge">${registry?.label || model.id}</div>
+      </div>
+      <div class="model-grid">
+        <div class="field">
+          <label class="label">Layers</label>
+          <input class="input" type="number" data-field="layers" value="${model.layers ?? ""}" />
+        </div>
+        <div class="field">
+          <label class="label">n ${nWarning ? "<span class=\"badge badge-warn\">Default</span>" : ""}</label>
+          <input class="input" type="number" data-field="n" value="${registry?.needs.includes("n") ? model.n ?? "" : ""}" ${registry?.needs.includes("n") ? "" : "disabled"} />
+        </div>
+        <div class="field">
+          <label class="label">alpha ${alphaWarning ? "<span class=\"badge badge-warn\">Default</span>" : ""}</label>
+          <input class="input" type="number" data-field="alpha" value="${registry?.needs.includes("alpha") ? model.alpha ?? "" : ""}" ${registry?.needs.includes("alpha") ? "" : "disabled"} />
+        </div>
+      </div>
+      <div class="model-formula">
+        <div class="label">Formel (SQL)</div>
+        <pre class="sql-block">${registry?.sql || "-"}</pre>
+      </div>
+    `;
+    const layersInput = card.querySelector("[data-field=\"layers\"]");
+    const nInput = card.querySelector("[data-field=\"n\"]");
+    const alphaInput = card.querySelector("[data-field=\"alpha\"]");
+
+    layersInput?.addEventListener("change", (event) => {
+      const value = Number(event.target.value);
+      model.layers = Number.isFinite(value) && value > 0 ? value : 1;
+      renderModelSettings();
+    });
+
+    nInput?.addEventListener("change", (event) => {
+      if (!registry?.needs.includes("n")) {
+        return;
+      }
+      const next = normalizeModelParam(event.target.value, 1);
+      model.n = next.value;
+      model.paramWarnings = { ...model.paramWarnings, n: next.warning };
+      renderModelSettings();
+      validateAndCompute();
+    });
+
+    alphaInput?.addEventListener("change", (event) => {
+      if (!registry?.needs.includes("alpha")) {
+        return;
+      }
+      const next = normalizeModelParam(event.target.value, 3.0);
+      model.alpha = next.value;
+      model.paramWarnings = { ...model.paramWarnings, alpha: next.warning };
+      renderModelSettings();
+      validateAndCompute();
+    });
+
+    elements.modelSettings.appendChild(card);
+  });
 }
 
 function renderPlantSelect(scenario) {
@@ -1036,16 +1250,28 @@ function openDetails(row) {
   state.ui.sidepanelOpen = true;
   saveUiSettings();
   elements.detailPanel.classList.toggle("open", true);
+  const fabBreakdown = row.breakdowns?.FAB;
+  const inputs = fabBreakdown?.inputs || {};
+  const inputRows = Object.entries(inputs).map(
+    ([key, value]) =>
+      `<div class="detail-item"><strong>${key}</strong><span>${formatDecimal(value)}</span></div>`
+  ).join("");
   elements.detailBody.innerHTML = `
     <div class="detail-grid">
       <div class="detail-item"><strong>TTNR</strong><span>${row.ttnr}</span></div>
       <div class="detail-item"><strong>Plant</strong><span>${row.plantName}</span></div>
       <div class="detail-item"><strong>Family</strong><span>${row.familyId}</span></div>
       <div class="detail-item"><strong>Year</strong><span>${row.year}</span></div>
-      <div class="detail-item"><strong>D_year</strong><span>${row.D_year.toFixed(4)}</span></div>
-      <div class="detail-item"><strong>A_cm2</strong><span>${row.A_cm2.toFixed(4)}</span></div>
-      <div class="detail-item"><strong>FAB Yield</strong><span>${formatPct(row.yields.FAB)}</span></div>
+      <div class="detail-item"><strong>Field</strong><span>FAB</span></div>
+      <div class="detail-item"><strong>Value</strong><span>${formatPct(row.yields.FAB)}</span></div>
+      <div class="detail-item"><strong>Model</strong><span>${row.model?.name || row.model?.id || "-"}</span></div>
     </div>
+    <h4>FAB Inputs</h4>
+    <div class="detail-grid">
+      ${inputRows || "<p class=\"muted\">Keine Inputs verfügbar.</p>"}
+    </div>
+    <h4>SQL-Formel</h4>
+    <pre class="sql-block">${fabBreakdown?.sqlSubstituted || "-"}</pre>
     <h4>Station Yields</h4>
     <div class="detail-grid">
       ${yieldFields.map((field) => `<div class="detail-item"><strong>${field}</strong><span>${formatPct(row.yields[field])}</span></div>`).join("")}
@@ -1059,7 +1285,7 @@ function openDetails(row) {
     <h4>Total</h4>
     <div class="badge">${formatPct(row.total)}</div>
   `;
-  elements.sqlPreview.textContent = row.model?.sqlFormula || "";
+  elements.sqlPreview.textContent = fabBreakdown?.sqlSubstituted || "";
 }
 
 function closeDetails() {
@@ -1077,6 +1303,7 @@ function applyImport({ tables, fileName, fileMetaText }) {
   state.validation = { errors, warnings };
   renderScenarioOptions();
   updateScenarioUi();
+  renderModelSettings();
   renderDataOverview();
   const firstTableName = Object.keys(tables)[0];
   if (firstTableName) {
@@ -1179,6 +1406,18 @@ function validateAndCompute() {
   scenario.startYear = Number(elements.scenarioStart.value) || scenario.startYear;
   scenario.endYear = Number(elements.scenarioEnd.value) || scenario.endYear;
   scenario.selectedYieldModelId = elements.modelSelect.value;
+  if (!state.model.yieldModels.has(scenario.selectedYieldModelId)) {
+    elements.calcHint.textContent = "Ungültiges Yield-Modell ausgewählt.";
+    state.results = [];
+    renderResults();
+    return;
+  }
+  if (!FAB_MODEL_REGISTRY[scenario.selectedYieldModelId]) {
+    elements.calcHint.textContent = "Yield-Modell nicht in der Registry vorhanden.";
+    state.results = [];
+    renderResults();
+    return;
+  }
 
   const selectedPlants = getSelectedPlants(scenario).filter(Boolean);
   if (selectedPlants.length === 0) {
