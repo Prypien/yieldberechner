@@ -286,6 +286,9 @@ function parseWorkbookSheets(workbookXml, relsXml) {
     if (!target) {
       return;
     }
+    if (target.startsWith("/")) {
+      target = target.slice(1);
+    }
     if (!target.startsWith("xl/")) {
       target = `xl/${target}`;
     }
@@ -311,16 +314,20 @@ function parseSheet(xml, sharedStrings) {
   const parser = new DOMParser();
   const doc = parser.parseFromString(xml, "application/xml");
   const rows = [];
+  const namespace = "http://schemas.openxmlformats.org/spreadsheetml/2006/main";
   doc.querySelectorAll("sheetData row").forEach((rowNode) => {
     const cells = rowNode.querySelectorAll("c");
     const row = [];
     cells.forEach((cell) => {
       const cellRef = cell.getAttribute("r");
+      if (!cellRef) {
+        return;
+      }
       const colIndex = columnIndex(cellRef.replace(/\d+/g, ""));
       let value = "";
       const type = cell.getAttribute("t");
-      const v = cell.querySelector("v");
-      const inline = cell.querySelector("is t");
+      const v = cell.getElementsByTagNameNS(namespace, "v")[0];
+      const inline = cell.getElementsByTagNameNS(namespace, "t")[0];
       if (type === "s" && v) {
         value = sharedStrings[Number(v.textContent)] ?? "";
       } else if (type === "inlineStr" && inline) {
