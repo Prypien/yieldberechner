@@ -318,6 +318,10 @@ code {
   max-height: 520px;
 }
 
+.table-scroll.compact {
+  max-height: 240px;
+}
+
 .table {
   width: 100%;
   border-collapse: collapse;
