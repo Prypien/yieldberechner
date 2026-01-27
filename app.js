@@ -1,5 +1,6 @@
 const STORAGE_KEY = "yield-ui-settings";
-const IMPORT_SUMMARY_KEY = "yield-import-summary";
+const INPUT_DATA_KEY = "yield-input-data";
+const INPUT_SUMMARY_KEY = "yield-input-summary";
 
 const numericFields = new Set([
   "start_year",
@@ -8,6 +9,7 @@ const numericFields = new Set([
   "D_in",
   "t",
   "t_start",
+  "t_end",
   "die_area_mm2",
   "static_extra_pct",
   "extra_pct",
@@ -24,6 +26,8 @@ const requiredTables = [
   "plant_base_yields",
   "families",
   "chip_types",
+  "technologies",
+  "technology_years",
   "chip_type_tech"
 ];
 
@@ -79,31 +83,17 @@ const HARD_CODED_YIELD_MODELS = [
   { id: "YM_NEGBIN", name: "Negative Binomial", alpha: 3.0, n: 1 }
 ];
 
-const HARD_CODED_TECHNOLOGIES = [
-  {
-    id: "TECH_CU",
-    plantId: "P1",
-    name: "Copper",
-    targetField: "FAB",
-    staticExtraPct: -1.0,
-    isDynamic: true,
-    description: "",
-    yearOverrides: {
-      2026: -1.5,
-      2028: -0.8
-    }
-  },
-  {
-    id: "TECH_LOWK",
-    plantId: "P1",
-    name: "LowK",
-    targetField: "FAB",
-    staticExtraPct: -0.5,
-    isDynamic: false,
-    description: "",
-    yearOverrides: {}
-  }
-];
+const DEFAULT_TABLES = {
+  scenarios: [],
+  scenario_plants: [],
+  plants: [],
+  plant_base_yields: [],
+  families: [],
+  chip_types: [],
+  technologies: [],
+  technology_years: [],
+  chip_type_tech: []
+};
 
 const tableNameMap = {
   scenario: "scenarios",
@@ -144,8 +134,54 @@ const elements = {
   importStatus: document.getElementById("import-status"),
   importDetails: document.getElementById("import-details"),
   importSummary: document.getElementById("import-summary"),
-  fileMeta: document.getElementById("file-meta"),
-  xlsxInput: document.getElementById("xlsx-input"),
+  scenarioIdInput: document.getElementById("scenario-id-input"),
+  scenarioNameInput: document.getElementById("scenario-name-input"),
+  scenarioStartInput: document.getElementById("scenario-start-input"),
+  scenarioEndInput: document.getElementById("scenario-end-input"),
+  scenarioModelInput: document.getElementById("scenario-model-input"),
+  addScenarioButton: document.getElementById("add-scenario"),
+  scenarioList: document.getElementById("scenario-list"),
+  plantIdInput: document.getElementById("plant-id-input"),
+  plantNameInput: document.getElementById("plant-name-input"),
+  plantYieldEpi: document.getElementById("plant-yield-epi"),
+  plantYieldVm: document.getElementById("plant-yield-vm"),
+  plantYieldSaw: document.getElementById("plant-yield-saw"),
+  plantYieldKgd: document.getElementById("plant-yield-kgd"),
+  plantYieldOsat: document.getElementById("plant-yield-osat"),
+  plantYieldEpiShip: document.getElementById("plant-yield-epi-ship"),
+  addPlantButton: document.getElementById("add-plant"),
+  plantList: document.getElementById("plant-list"),
+  familyPlantSelect: document.getElementById("family-plant-select"),
+  familyIdInput: document.getElementById("family-id-input"),
+  familyNameInput: document.getElementById("family-name-input"),
+  familyDensityStart: document.getElementById("family-density-start"),
+  familyDensityEnd: document.getElementById("family-density-end"),
+  familyT0Input: document.getElementById("family-t0-input"),
+  familyTEndInput: document.getElementById("family-tend-input"),
+  addFamilyButton: document.getElementById("add-family"),
+  familyList: document.getElementById("family-list"),
+  typePlantSelect: document.getElementById("type-plant-select"),
+  typeFamilySelect: document.getElementById("type-family-select"),
+  typeTtnrInput: document.getElementById("type-ttnr-input"),
+  typeNameInput: document.getElementById("type-name-input"),
+  typeAreaInput: document.getElementById("type-area-input"),
+  typePackageInput: document.getElementById("type-package-input"),
+  typeStartYearInput: document.getElementById("type-start-year-input"),
+  addTypeButton: document.getElementById("add-type"),
+  typeList: document.getElementById("type-list"),
+  techScenarioSelect: document.getElementById("tech-scenario-select"),
+  techPlantSelect: document.getElementById("tech-plant-select"),
+  techIdInput: document.getElementById("tech-id-input"),
+  techNameInput: document.getElementById("tech-name-input"),
+  techTargetSelect: document.getElementById("tech-target-select"),
+  techStaticInput: document.getElementById("tech-static-input"),
+  techDynamicInput: document.getElementById("tech-dynamic-input"),
+  addTechButton: document.getElementById("add-tech"),
+  techList: document.getElementById("tech-list"),
+  mapTypeSelect: document.getElementById("map-type-select"),
+  mapTechSelect: document.getElementById("map-tech-select"),
+  addMappingButton: document.getElementById("add-mapping"),
+  mappingList: document.getElementById("mapping-list"),
   scenarioSelect: document.getElementById("scenario-select"),
   scenarioName: document.getElementById("scenario-name"),
   scenarioStart: document.getElementById("scenario-start"),
@@ -185,12 +221,12 @@ function loadUiSettings() {
   }
 }
 
-function saveImportSummary(summary) {
-  localStorage.setItem(IMPORT_SUMMARY_KEY, JSON.stringify(summary));
+function saveInputSummary(summary) {
+  localStorage.setItem(INPUT_SUMMARY_KEY, JSON.stringify(summary));
 }
 
-function loadImportSummary() {
-  const stored = localStorage.getItem(IMPORT_SUMMARY_KEY);
+function loadInputSummary() {
+  const stored = localStorage.getItem(INPUT_SUMMARY_KEY);
   if (stored) {
     try {
       return JSON.parse(stored);
@@ -199,6 +235,28 @@ function loadImportSummary() {
     }
   }
   return null;
+}
+
+function loadInputTables() {
+  const stored = localStorage.getItem(INPUT_DATA_KEY);
+  if (!stored) {
+    return structuredClone(DEFAULT_TABLES);
+  }
+  try {
+    const parsed = JSON.parse(stored);
+    return { ...structuredClone(DEFAULT_TABLES), ...parsed };
+  } catch (error) {
+    console.warn("Failed to parse input tables", error);
+    return structuredClone(DEFAULT_TABLES);
+  }
+}
+
+function saveInputTables(tables) {
+  localStorage.setItem(INPUT_DATA_KEY, JSON.stringify(tables));
+}
+
+function getWorkingTables() {
+  return structuredClone(state.tables || DEFAULT_TABLES);
 }
 
 function clamp01(value) {
@@ -573,13 +631,6 @@ function cloneHardcodedYieldModels() {
   }));
 }
 
-function cloneHardcodedTechnologies() {
-  return HARD_CODED_TECHNOLOGIES.map((tech) => ({
-    ...tech,
-    yearOverrides: { ...tech.yearOverrides }
-  }));
-}
-
 function ensureTechnologyOverrides(model, techId) {
   if (!model.technologyYears.has(techId)) {
     model.technologyYears.set(techId, new Map());
@@ -666,31 +717,40 @@ function buildDataModel(tables) {
       D0: parseNumber(row.D0) ?? 0,
       D_in: parseNumber(row.D_in) ?? 0,
       t: parseNumber(row.t) ?? 0,
-      t_start: parseNumber(row.t_start) ?? 0,
+      t_start: parseNumber(row.t_start ?? row.t0) ?? 0,
+      t_end: parseNumber(row.t_end ?? row.tEnd) ?? null,
       name: row.name || familyId
     });
   });
 
-  cloneHardcodedTechnologies().forEach((row) => {
-    const plant = model.plants.get(row.plantId);
+  (tables.technologies || []).forEach((row) => {
+    const plantId = row.plant_id || row.plantId || row.plant;
+    const plant = model.plants.get(plantId);
     if (!plant) {
-      errors.push(`Hardcoded Technology ${row.id} referenziert unbekanntes plant_id ${row.plantId}`);
+      errors.push(`technology ${row.tech_id || row.id} referenziert unbekanntes plant_id ${plantId}`);
       return;
     }
-    plant.technologies.set(row.id, {
-      id: row.id,
-      plantId: row.plantId,
-      name: row.name,
-      targetField: row.targetField,
-      staticExtraPct: parseNumber(row.staticExtraPct) ?? 0,
-      isDynamic: Boolean(row.isDynamic),
+    const techId = row.tech_id || row.technology_id || row.id;
+    plant.technologies.set(techId, {
+      id: techId,
+      plantId,
+      scenarioId: row.scenario_id || row.scenarioId || "",
+      name: row.name || techId,
+      targetField: row.target_field || row.targetField || "FAB",
+      staticExtraPct: parseNumber(row.static_extra_pct ?? row.staticExtraPct) ?? 0,
+      isDynamic: Boolean(parseNumber(row.is_dynamic ?? row.isDynamic)),
       description: row.description || ""
     });
-    const overrides = row.yearOverrides || {};
-    Object.entries(overrides).forEach(([year, value]) => {
-      const techOverrides = ensureTechnologyOverrides(model, row.id);
-      techOverrides.set(Number(year), parseNumber(value) ?? 0);
-    });
+  });
+
+  (tables.technology_years || []).forEach((row) => {
+    const techId = row.tech_id || row.technology_id || row.id;
+    const year = parseNumber(row.year);
+    if (!techId || !Number.isFinite(year)) {
+      return;
+    }
+    const techOverrides = ensureTechnologyOverrides(model, techId);
+    techOverrides.set(Number(year), parseNumber(row.extra_pct ?? row.extraPct) ?? 0);
   });
 
   (tables.chip_types || []).forEach((row) => {
@@ -734,7 +794,10 @@ function buildDataModel(tables) {
     if (!model.chipTypeTech.has(ttnr)) {
       model.chipTypeTech.set(ttnr, []);
     }
-    model.chipTypeTech.get(ttnr).push(techId);
+    model.chipTypeTech.get(ttnr).push({
+      techId,
+      scenarioId: row.scenario_id || row.scenarioId || ""
+    });
   });
 
   (tables.scenarios || []).forEach((row) => {
@@ -804,8 +867,17 @@ function findChipType(model, ttnr) {
 }
 
 function computeDefectDensity(family, yIdx) {
+  const start = Number(family.t_start ?? family.t0);
+  const end = Number(family.t_end ?? family.tEnd);
+  const d0 = Number(family.D0 ?? family.densityStart ?? 0);
+  const dEnd = Number(family.D_in ?? family.densityEnd ?? 0);
+  if (Number.isFinite(start) && Number.isFinite(end) && end > start) {
+    const clampedYear = Math.min(end, Math.max(start, start + yIdx));
+    const ratio = (clampedYear - start) / (end - start);
+    return d0 + (dEnd - d0) * ratio;
+  }
   const time = Math.max(0, yIdx - (family.t_start || 0));
-  return (family.D0 || 0) + (family.D_in || 0) * Math.exp(-(family.t || 0) * time);
+  return d0 + dEnd * Math.exp(-(family.t || 0) * time);
 }
 
 function computeFabYield(modelKey, D_year, A_cm2, params) {
@@ -889,10 +961,14 @@ function computeResults({ scenario, plantsData, yieldModels, chipTypeTech, model
           baseYields[field] = clamp01(base);
         });
 
-        const techIds = chipTypeTech.get(chip.ttnr) || [];
-        const techDetails = techIds.map((techId) => {
-          const technology = plant.technologies.get(techId);
+        const techMappings = chipTypeTech.get(chip.ttnr) || [];
+        const techDetails = techMappings.map((mapping) => {
+          const technology = plant.technologies.get(mapping.techId);
           if (!technology) {
+            return null;
+          }
+          const scenarioId = mapping.scenarioId || technology.scenarioId || "";
+          if (scenarioId && scenarioId !== scenario.id) {
             return null;
           }
           const extraPct = getDynamicExtraPct(model, technology, year);
@@ -943,12 +1019,12 @@ function setImportStatus({ status, message, details }) {
   elements.importDetails.innerHTML = details || "";
 }
 
-function updateImportSummary(summary) {
+function updateInputSummary(summary) {
   if (!summary) {
-    elements.importSummary.textContent = "Noch keine Import-Historie vorhanden.";
+    elements.importSummary.textContent = "Noch keine Eingaben gespeichert.";
     return;
   }
-  elements.importSummary.innerHTML = `Datei: <strong>${summary.fileName}</strong><br />Zeitpunkt: ${summary.timestamp}<br />Szenario: ${summary.scenario || "-"}`;
+  elements.importSummary.innerHTML = `Status: <strong>${summary.note || "Eingaben aktualisiert"}</strong><br />Zeitpunkt: ${summary.timestamp}<br />Szenario: ${summary.scenario || "-"}`;
 }
 
 function renderDataOverview() {
@@ -996,9 +1072,468 @@ function renderTablePreview(name, rows) {
   elements.tablePreview.appendChild(table);
 }
 
+function renderListTable(container, columns, rows, onDelete) {
+  if (!container) {
+    return;
+  }
+  if (!rows || rows.length === 0) {
+    container.innerHTML = "<p class=\"muted\">Keine Einträge vorhanden.</p>";
+    return;
+  }
+  const table = document.createElement("table");
+  table.className = "table";
+  const thead = document.createElement("thead");
+  const headRow = document.createElement("tr");
+  columns.forEach((col) => {
+    const th = document.createElement("th");
+    th.textContent = col.label;
+    headRow.appendChild(th);
+  });
+  if (onDelete) {
+    const th = document.createElement("th");
+    th.textContent = "Aktion";
+    headRow.appendChild(th);
+  }
+  thead.appendChild(headRow);
+  const tbody = document.createElement("tbody");
+  rows.forEach((row) => {
+    const tr = document.createElement("tr");
+    columns.forEach((col) => {
+      const td = document.createElement("td");
+      td.textContent = col.format ? col.format(row[col.key], row) : row[col.key] ?? "";
+      tr.appendChild(td);
+    });
+    if (onDelete) {
+      const td = document.createElement("td");
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "btn btn-secondary";
+      button.textContent = "Löschen";
+      button.addEventListener("click", () => onDelete(row));
+      td.appendChild(button);
+      tr.appendChild(td);
+    }
+    tbody.appendChild(tr);
+  });
+  table.appendChild(thead);
+  table.appendChild(tbody);
+  container.innerHTML = "";
+  container.appendChild(table);
+}
+
+function refreshInputSelects() {
+  if (!state.model) {
+    return;
+  }
+  updateSelect(
+    elements.scenarioModelInput,
+    Array.from(state.model.yieldModels.keys()),
+    elements.scenarioModelInput.value,
+    (id) => state.model.yieldModels.get(id)?.name || id
+  );
+  if (!elements.scenarioModelInput.value && state.model.yieldModels.size > 0) {
+    elements.scenarioModelInput.value = Array.from(state.model.yieldModels.keys())[0];
+  }
+
+  const plantIds = Array.from(state.model.plants.keys());
+  updateSelect(elements.familyPlantSelect, plantIds, elements.familyPlantSelect.value, (id) => id);
+  updateSelect(elements.typePlantSelect, plantIds, elements.typePlantSelect.value, (id) => id);
+  updateSelect(elements.techPlantSelect, plantIds, elements.techPlantSelect.value, (id) => id);
+
+  const scenarios = state.model.scenarios.map((scenario) => scenario.id);
+  updateSelect(elements.techScenarioSelect, ["", ...scenarios], elements.techScenarioSelect.value, (id) => {
+    if (!id) {
+      return "Global";
+    }
+    return id;
+  });
+
+  updateSelect(elements.techTargetSelect, yieldFields, elements.techTargetSelect.value, (id) => id);
+
+  const selectedPlant = elements.typePlantSelect.value;
+  const families = [];
+  state.model.plants.forEach((plant) => {
+    if (selectedPlant && plant.id !== selectedPlant) {
+      return;
+    }
+    plant.families.forEach((family) => families.push(family.id));
+  });
+  updateSelect(elements.typeFamilySelect, families, elements.typeFamilySelect.value, (id) => id);
+
+  const chipTypes = [];
+  state.model.plants.forEach((plant) => {
+    plant.chipTypes.forEach((chip) => chipTypes.push(chip.ttnr));
+  });
+  updateSelect(elements.mapTypeSelect, chipTypes, elements.mapTypeSelect.value, (id) => id);
+
+  const technologies = [];
+  state.model.plants.forEach((plant) => {
+    plant.technologies.forEach((tech) => {
+      technologies.push({
+        id: tech.id,
+        label: `${tech.name} (${tech.id})${tech.scenarioId ? ` · ${tech.scenarioId}` : ""}`,
+        scenarioId: tech.scenarioId || ""
+      });
+    });
+  });
+  elements.mapTechSelect.innerHTML = "";
+  technologies.forEach((tech) => {
+    const option = document.createElement("option");
+    option.value = tech.id;
+    option.textContent = tech.label;
+    elements.mapTechSelect.appendChild(option);
+  });
+}
+
+function renderInputLists() {
+  refreshInputSelects();
+  const tables = state.tables;
+
+  renderListTable(
+    elements.scenarioList,
+    [
+      { key: "scenario_id", label: "ID", format: (_, row) => row.scenario_id || row.id },
+      { key: "name", label: "Name" },
+      { key: "start_year", label: "t0" },
+      { key: "end_year", label: "tEnd" },
+      { key: "selected_yield_model_id", label: "Modell" }
+    ],
+    tables.scenarios || [],
+    (row) => deleteScenario(row.scenario_id || row.id)
+  );
+
+  renderListTable(
+    elements.plantList,
+    [
+      { key: "plant_id", label: "Werk-ID", format: (_, row) => row.plant_id || row.id },
+      { key: "name", label: "Name" }
+    ],
+    tables.plants || [],
+    (row) => deletePlant(row.plant_id || row.id)
+  );
+
+  renderListTable(
+    elements.familyList,
+    [
+      { key: "family_id", label: "Family-ID", format: (_, row) => row.family_id || row.id },
+      { key: "name", label: "Name" },
+      { key: "plant_id", label: "Werk" },
+      { key: "D0", label: "D0" },
+      { key: "D_in", label: "D_in" },
+      { key: "t_start", label: "t0" },
+      { key: "t_end", label: "tEnd" }
+    ],
+    tables.families || [],
+    (row) => deleteFamily(row.plant_id, row.family_id || row.id)
+  );
+
+  renderListTable(
+    elements.typeList,
+    [
+      { key: "ttnr", label: "TTNR" },
+      { key: "name", label: "Name" },
+      { key: "plant_id", label: "Werk" },
+      { key: "family_id", label: "Family" },
+      { key: "die_area_mm2", label: "Fläche mm²" }
+    ],
+    tables.chip_types || [],
+    (row) => deleteChipType(row.ttnr)
+  );
+
+  renderListTable(
+    elements.techList,
+    [
+      { key: "tech_id", label: "Tech-ID", format: (_, row) => row.tech_id || row.id },
+      { key: "name", label: "Name" },
+      { key: "plant_id", label: "Werk" },
+      { key: "scenario_id", label: "Szenario", format: (_, row) => row.scenario_id || "Global" },
+      { key: "target_field", label: "Field" },
+      { key: "static_extra_pct", label: "Extra %" },
+      { key: "is_dynamic", label: "Dynamisch", format: (value) => (Number(value) ? "Ja" : "Nein") }
+    ],
+    tables.technologies || [],
+    (row) => deleteTechnology(row.tech_id || row.id, row.plant_id)
+  );
+
+  renderListTable(
+    elements.mappingList,
+    [
+      { key: "ttnr", label: "TTNR" },
+      { key: "tech_id", label: "Tech-ID", format: (_, row) => row.tech_id || row.technology_id || row.id }
+    ],
+    tables.chip_type_tech || [],
+    (row) => deleteMapping(row.ttnr, row.tech_id || row.technology_id || row.id)
+  );
+}
+
+function addScenario() {
+  const id = elements.scenarioIdInput.value.trim();
+  if (!id) {
+    return;
+  }
+  const tables = getWorkingTables();
+  const modelId = elements.scenarioModelInput.value || Array.from(state.model?.yieldModels?.keys() || [])[0];
+  const row = {
+    scenario_id: id,
+    name: elements.scenarioNameInput.value.trim() || id,
+    start_year: parseNumber(elements.scenarioStartInput.value),
+    end_year: parseNumber(elements.scenarioEndInput.value),
+    selected_yield_model_id: modelId
+  };
+  const index = tables.scenarios.findIndex((scenario) => (scenario.scenario_id || scenario.id) === id);
+  if (index >= 0) {
+    tables.scenarios[index] = row;
+  } else {
+    tables.scenarios.push(row);
+  }
+  applyTables({ tables, note: `Szenario ${id} gespeichert` });
+  elements.scenarioIdInput.value = "";
+  elements.scenarioNameInput.value = "";
+  elements.scenarioStartInput.value = "";
+  elements.scenarioEndInput.value = "";
+}
+
+function addPlant() {
+  const id = elements.plantIdInput.value.trim();
+  if (!id) {
+    return;
+  }
+  const tables = getWorkingTables();
+  const plantRow = {
+    plant_id: id,
+    name: elements.plantNameInput.value.trim() || id
+  };
+  const index = tables.plants.findIndex((plant) => (plant.plant_id || plant.id) === id);
+  if (index >= 0) {
+    tables.plants[index] = plantRow;
+  } else {
+    tables.plants.push(plantRow);
+  }
+
+  const yieldValues = {
+    EPI: parseNumber(elements.plantYieldEpi.value),
+    VM: parseNumber(elements.plantYieldVm.value),
+    SAW: parseNumber(elements.plantYieldSaw.value),
+    KGD: parseNumber(elements.plantYieldKgd.value),
+    OSAT: parseNumber(elements.plantYieldOsat.value),
+    EPI_SHIP: parseNumber(elements.plantYieldEpiShip.value)
+  };
+  tables.plant_base_yields = tables.plant_base_yields.filter((row) => row.plant_id !== id);
+  Object.entries(yieldValues).forEach(([field, value]) => {
+    tables.plant_base_yields.push({
+      plant_id: id,
+      field,
+      base_yield: Number.isFinite(value) ? value : 1
+    });
+  });
+
+  applyTables({ tables, note: `Werk ${id} gespeichert` });
+  elements.plantIdInput.value = "";
+  elements.plantNameInput.value = "";
+  elements.plantYieldEpi.value = "";
+  elements.plantYieldVm.value = "";
+  elements.plantYieldSaw.value = "";
+  elements.plantYieldKgd.value = "";
+  elements.plantYieldOsat.value = "";
+  elements.plantYieldEpiShip.value = "";
+}
+
+function addFamily() {
+  const plantId = elements.familyPlantSelect.value;
+  const familyId = elements.familyIdInput.value.trim();
+  if (!plantId || !familyId) {
+    return;
+  }
+  const tables = getWorkingTables();
+  const row = {
+    plant_id: plantId,
+    family_id: familyId,
+    name: elements.familyNameInput.value.trim() || familyId,
+    D0: parseNumber(elements.familyDensityStart.value),
+    D_in: parseNumber(elements.familyDensityEnd.value),
+    t_start: parseNumber(elements.familyT0Input.value),
+    t_end: parseNumber(elements.familyTEndInput.value)
+  };
+  const index = tables.families.findIndex(
+    (family) => family.plant_id === plantId && (family.family_id || family.id) === familyId
+  );
+  if (index >= 0) {
+    tables.families[index] = row;
+  } else {
+    tables.families.push(row);
+  }
+  applyTables({ tables, note: `Familie ${familyId} gespeichert` });
+  elements.familyIdInput.value = "";
+  elements.familyNameInput.value = "";
+  elements.familyDensityStart.value = "";
+  elements.familyDensityEnd.value = "";
+  elements.familyT0Input.value = "";
+  elements.familyTEndInput.value = "";
+}
+
+function addChipType() {
+  const plantId = elements.typePlantSelect.value;
+  const familyId = elements.typeFamilySelect.value;
+  const ttnr = elements.typeTtnrInput.value.trim();
+  if (!plantId || !familyId || !ttnr) {
+    return;
+  }
+  const tables = getWorkingTables();
+  const row = {
+    plant_id: plantId,
+    family_id: familyId,
+    ttnr,
+    name: elements.typeNameInput.value.trim() || ttnr,
+    die_area_mm2: parseNumber(elements.typeAreaInput.value),
+    package: elements.typePackageInput.value.trim(),
+    special_start_year: parseNumber(elements.typeStartYearInput.value)
+  };
+  const index = tables.chip_types.findIndex((chip) => chip.ttnr === ttnr);
+  if (index >= 0) {
+    tables.chip_types[index] = row;
+  } else {
+    tables.chip_types.push(row);
+  }
+  applyTables({ tables, note: `Typ ${ttnr} gespeichert` });
+  elements.typeTtnrInput.value = "";
+  elements.typeNameInput.value = "";
+  elements.typeAreaInput.value = "";
+  elements.typePackageInput.value = "";
+  elements.typeStartYearInput.value = "";
+}
+
+function addTechnology() {
+  const plantId = elements.techPlantSelect.value;
+  const techId = elements.techIdInput.value.trim();
+  if (!plantId || !techId) {
+    return;
+  }
+  const tables = getWorkingTables();
+  const scenarioId = elements.techScenarioSelect.value;
+  const row = {
+    plant_id: plantId,
+    tech_id: techId,
+    scenario_id: scenarioId,
+    name: elements.techNameInput.value.trim() || techId,
+    target_field: elements.techTargetSelect.value,
+    static_extra_pct: parseNumber(elements.techStaticInput.value) ?? 0,
+    is_dynamic: elements.techDynamicInput.checked ? 1 : 0
+  };
+  const index = tables.technologies.findIndex(
+    (tech) => (tech.tech_id || tech.id) === techId && tech.plant_id === plantId
+  );
+  if (index >= 0) {
+    tables.technologies[index] = row;
+  } else {
+    tables.technologies.push(row);
+  }
+  applyTables({ tables, note: `Technologie ${techId} gespeichert` });
+  elements.techIdInput.value = "";
+  elements.techNameInput.value = "";
+  elements.techStaticInput.value = "";
+  elements.techDynamicInput.checked = false;
+}
+
+function addMapping() {
+  const ttnr = elements.mapTypeSelect.value;
+  const techId = elements.mapTechSelect.value;
+  if (!ttnr || !techId) {
+    return;
+  }
+  const tables = getWorkingTables();
+  const exists = tables.chip_type_tech.some((row) => row.ttnr === ttnr && (row.tech_id || row.id) === techId);
+  if (!exists) {
+    tables.chip_type_tech.push({ ttnr, tech_id: techId });
+  }
+  applyTables({ tables, note: `Zuordnung ${ttnr} → ${techId}` });
+}
+
+function deleteScenario(scenarioId) {
+  const tables = getWorkingTables();
+  tables.scenarios = tables.scenarios.filter((row) => (row.scenario_id || row.id) !== scenarioId);
+  tables.scenario_plants = tables.scenario_plants.filter((row) => row.scenario_id !== scenarioId);
+  const removedTechIds = tables.technologies
+    .filter((row) => row.scenario_id === scenarioId)
+    .map((row) => row.tech_id || row.id);
+  tables.technologies = tables.technologies.filter((row) => row.scenario_id !== scenarioId);
+  tables.technology_years = tables.technology_years.filter(
+    (row) => !removedTechIds.includes(row.tech_id || row.technology_id || row.id)
+  );
+  tables.chip_type_tech = tables.chip_type_tech.filter(
+    (row) => !removedTechIds.includes(row.tech_id || row.technology_id || row.id)
+  );
+  applyTables({ tables, note: `Szenario ${scenarioId} gelöscht` });
+}
+
+function deletePlant(plantId) {
+  const tables = getWorkingTables();
+  const removedTechIds = tables.technologies
+    .filter((row) => row.plant_id === plantId)
+    .map((row) => row.tech_id || row.id);
+  tables.plants = tables.plants.filter((row) => (row.plant_id || row.id) !== plantId);
+  tables.plant_base_yields = tables.plant_base_yields.filter((row) => row.plant_id !== plantId);
+  tables.scenario_plants = tables.scenario_plants.filter((row) => row.plant_id !== plantId);
+  tables.families = tables.families.filter((row) => row.plant_id !== plantId);
+  tables.chip_types = tables.chip_types.filter((row) => row.plant_id !== plantId);
+  tables.technologies = tables.technologies.filter((row) => row.plant_id !== plantId);
+  tables.technology_years = tables.technology_years.filter(
+    (row) => !removedTechIds.includes(row.tech_id || row.technology_id || row.id)
+  );
+  tables.chip_type_tech = tables.chip_type_tech.filter(
+    (row) => !removedTechIds.includes(row.tech_id || row.technology_id || row.id)
+  );
+  applyTables({ tables, note: `Werk ${plantId} gelöscht` });
+}
+
+function deleteFamily(plantId, familyId) {
+  const tables = getWorkingTables();
+  tables.families = tables.families.filter(
+    (row) => !(row.plant_id === plantId && (row.family_id || row.id) === familyId)
+  );
+  const removedTypes = tables.chip_types.filter((row) => row.family_id === familyId).map((row) => row.ttnr);
+  tables.chip_types = tables.chip_types.filter((row) => row.family_id !== familyId);
+  tables.chip_type_tech = tables.chip_type_tech.filter((row) => !removedTypes.includes(row.ttnr));
+  applyTables({ tables, note: `Familie ${familyId} gelöscht` });
+}
+
+function deleteChipType(ttnr) {
+  const tables = getWorkingTables();
+  tables.chip_types = tables.chip_types.filter((row) => row.ttnr !== ttnr);
+  tables.chip_type_tech = tables.chip_type_tech.filter((row) => row.ttnr !== ttnr);
+  applyTables({ tables, note: `Typ ${ttnr} gelöscht` });
+}
+
+function deleteTechnology(techId, plantId) {
+  const tables = getWorkingTables();
+  tables.technologies = tables.technologies.filter(
+    (row) => !((row.tech_id || row.id) === techId && row.plant_id === plantId)
+  );
+  tables.technology_years = tables.technology_years.filter(
+    (row) => (row.tech_id || row.technology_id || row.id) !== techId
+  );
+  tables.chip_type_tech = tables.chip_type_tech.filter(
+    (row) => (row.tech_id || row.technology_id || row.id) !== techId
+  );
+  applyTables({ tables, note: `Technologie ${techId} gelöscht` });
+}
+
+function deleteMapping(ttnr, techId) {
+  const tables = getWorkingTables();
+  tables.chip_type_tech = tables.chip_type_tech.filter(
+    (row) => !(row.ttnr === ttnr && (row.tech_id || row.technology_id || row.id) === techId)
+  );
+  applyTables({ tables, note: `Zuordnung entfernt` });
+}
+
 function updateScenarioUi() {
   const scenario = getSelectedScenario();
   if (!scenario) {
+    elements.scenarioName.value = "";
+    elements.scenarioStart.value = "";
+    elements.scenarioEnd.value = "";
+    elements.plantSelect.innerHTML = "";
+    elements.modelSelect.innerHTML = "";
+    updateFilters();
     return;
   }
   elements.scenarioName.value = scenario.name || "";
@@ -1011,7 +1546,16 @@ function updateScenarioUi() {
 
 function renderScenarioOptions() {
   elements.scenarioSelect.innerHTML = "";
-  state.model?.scenarios.forEach((scenario) => {
+  if (!state.model || state.model.scenarios.length === 0) {
+    const option = document.createElement("option");
+    option.value = "";
+    option.textContent = "Keine Szenarien";
+    option.disabled = true;
+    option.selected = true;
+    elements.scenarioSelect.appendChild(option);
+    return;
+  }
+  state.model.scenarios.forEach((scenario) => {
     const option = document.createElement("option");
     option.value = scenario.id;
     option.textContent = `${scenario.id} – ${scenario.name}`;
@@ -1116,6 +1660,44 @@ function renderModelSettings() {
   });
 }
 
+function updateTechnologyInTables(tech, updates, note) {
+  const tables = getWorkingTables();
+  const index = tables.technologies.findIndex(
+    (row) => (row.tech_id || row.id) === tech.id && row.plant_id === tech.plantId
+  );
+  const nextRow = {
+    plant_id: tech.plantId,
+    tech_id: tech.id,
+    scenario_id: tech.scenarioId || "",
+    name: tech.name,
+    target_field: tech.targetField,
+    static_extra_pct: tech.staticExtraPct,
+    is_dynamic: tech.isDynamic ? 1 : 0,
+    ...updates
+  };
+  if (index >= 0) {
+    tables.technologies[index] = nextRow;
+  } else {
+    tables.technologies.push(nextRow);
+  }
+  applyTables({ tables, note: note || `Technologie ${tech.id} aktualisiert` });
+}
+
+function updateTechnologyOverridesInTables(techId, overrides, note) {
+  const tables = getWorkingTables();
+  tables.technology_years = tables.technology_years.filter(
+    (row) => (row.tech_id || row.technology_id || row.id) !== techId
+  );
+  Array.from(overrides.entries()).forEach(([year, extra]) => {
+    tables.technology_years.push({
+      tech_id: techId,
+      year,
+      extra_pct: extra
+    });
+  });
+  applyTables({ tables, note: note || `Tech-Overrides ${techId} aktualisiert` });
+}
+
 function renderTechnologySettings() {
   if (!elements.techSettings) {
     return;
@@ -1159,7 +1741,7 @@ function renderTechnologySettings() {
       <div class="model-header">
         <div>
           <h3>${tech.name}</h3>
-          <div class="muted">ID: ${tech.id} · Werk: ${plant.name || plant.id}</div>
+          <div class="muted">ID: ${tech.id} · Werk: ${plant.name || plant.id} · Szenario: ${tech.scenarioId || "Global"}</div>
         </div>
         <div class="badge">${tech.targetField}</div>
       </div>
@@ -1203,27 +1785,19 @@ function renderTechnologySettings() {
     const dynamicToggle = card.querySelector("[data-field=\"isDynamic\"]");
 
     nameInput?.addEventListener("change", (event) => {
-      tech.name = event.target.value;
-      renderTechnologySettings();
-      validateAndCompute();
+      updateTechnologyInTables(tech, { name: event.target.value });
     });
 
     targetSelect?.addEventListener("change", (event) => {
-      tech.targetField = event.target.value;
-      renderTechnologySettings();
-      validateAndCompute();
+      updateTechnologyInTables(tech, { target_field: event.target.value });
     });
 
     staticInput?.addEventListener("change", (event) => {
-      tech.staticExtraPct = parseNumber(event.target.value) ?? 0;
-      renderTechnologySettings();
-      validateAndCompute();
+      updateTechnologyInTables(tech, { static_extra_pct: parseNumber(event.target.value) ?? 0 });
     });
 
     dynamicToggle?.addEventListener("change", (event) => {
-      tech.isDynamic = event.target.checked;
-      renderTechnologySettings();
-      validateAndCompute();
+      updateTechnologyInTables(tech, { is_dynamic: event.target.checked ? 1 : 0 });
     });
 
     card.querySelectorAll("[data-field=\"extra\"]").forEach((input) => {
@@ -1231,8 +1805,7 @@ function renderTechnologySettings() {
         const year = Number(event.target.dataset.year);
         const value = parseNumber(event.target.value) ?? 0;
         overrides.set(year, value);
-        renderTechnologySettings();
-        validateAndCompute();
+        updateTechnologyOverridesInTables(tech.id, overrides);
       });
     });
 
@@ -1246,8 +1819,7 @@ function renderTechnologySettings() {
         const currentValue = overrides.get(prevYear) ?? 0;
         overrides.delete(prevYear);
         overrides.set(nextYear, currentValue);
-        renderTechnologySettings();
-        validateAndCompute();
+        updateTechnologyOverridesInTables(tech.id, overrides);
       });
     });
 
@@ -1255,8 +1827,7 @@ function renderTechnologySettings() {
       button.addEventListener("click", (event) => {
         const year = Number(event.target.dataset.year);
         overrides.delete(year);
-        renderTechnologySettings();
-        validateAndCompute();
+        updateTechnologyOverridesInTables(tech.id, overrides);
       });
     });
 
@@ -1269,8 +1840,7 @@ function renderTechnologySettings() {
       if (!overrides.has(nextYear)) {
         overrides.set(nextYear, tech.staticExtraPct ?? 0);
       }
-      renderTechnologySettings();
-      validateAndCompute();
+      updateTechnologyOverridesInTables(tech.id, overrides);
     });
 
     elements.techSettings.appendChild(card);
@@ -1490,8 +2060,9 @@ function closeDetails() {
   elements.sqlPreview.textContent = "";
 }
 
-function applyImport({ tables, fileName, fileMetaText }) {
+function applyTables({ tables, note }) {
   state.tables = tables;
+  saveInputTables(tables);
   const { model, errors, warnings } = buildDataModel(tables);
   state.model = model;
   state.validation = { errors, warnings };
@@ -1500,6 +2071,7 @@ function applyImport({ tables, fileName, fileMetaText }) {
   renderModelSettings();
   renderTechnologySettings();
   renderDataOverview();
+  renderInputLists();
   const firstTableName = Object.keys(tables)[0];
   if (firstTableName) {
     renderTablePreview(firstTableName, tables[firstTableName] || []);
@@ -1509,55 +2081,13 @@ function applyImport({ tables, fileName, fileMetaText }) {
   updateValidationStatus();
   validateAndCompute();
 
-  if (fileMetaText) {
-    elements.fileMeta.textContent = fileMetaText;
-  }
-
   const summary = {
-    fileName,
+    note: note || "Eingaben aktualisiert",
     timestamp: new Date().toLocaleString("de-DE"),
     scenario: getSelectedScenario()?.id || ""
   };
-  saveImportSummary(summary);
-  updateImportSummary(summary);
-}
-
-async function loadDefaultXlsx() {
-  try {
-    setImportStatus({ status: "status-ok", message: "Standard-Datenbasis wird geladen…", details: "" });
-    let response = await fetch("yield_data_basis.xlsx");
-    let tables = null;
-    let fileName = "yield_data_basis.xlsx";
-
-    if (response.ok) {
-      const arrayBuffer = await response.arrayBuffer();
-      tables = await parseXlsxArrayBuffer(arrayBuffer);
-    } else {
-      response = await fetch("yield_data_basis.csv");
-      if (!response.ok) {
-        throw new Error("Standard-Datei nicht gefunden.");
-      }
-      const text = await response.text();
-      tables = parseCsvTextToTables(text);
-      fileName = "yield_data_basis.csv";
-    }
-
-    const contentLength = response.headers.get("content-length");
-    const sizeKb = contentLength ? Math.round(Number(contentLength) / 1024) : null;
-    const sizeLabel = sizeKb ? `${sizeKb} KB` : "Größe unbekannt";
-    applyImport({
-      tables,
-      fileName,
-      fileMetaText: `Automatisch geladen: ${fileName} (${sizeLabel})`
-    });
-  } catch (error) {
-    setImportStatus({
-      status: "status-warn",
-      message: "Automatischer Import fehlgeschlagen",
-      details: `<p>${error.message}</p>`
-    });
-    elements.fileMeta.textContent = "Automatischer Import fehlgeschlagen.";
-  }
+  saveInputSummary(summary);
+  updateInputSummary(summary);
 }
 
 function handleSortClick(event) {
@@ -1591,11 +2121,14 @@ function validateAndCompute() {
     return;
   }
   if (state.validation.errors.length > 0) {
-    elements.calcHint.textContent = "Berechnung gesperrt – Importfehler vorhanden.";
+    elements.calcHint.textContent = "Berechnung gesperrt – Eingabefehler vorhanden.";
     return;
   }
   const scenario = getSelectedScenario();
   if (!scenario) {
+    elements.calcHint.textContent = "Bitte zuerst ein Szenario anlegen.";
+    state.results = [];
+    renderResults();
     return;
   }
   const startInput = parseNumber(elements.scenarioStart.value);
@@ -1670,7 +2203,7 @@ function updateValidationStatus() {
       details: `<ul>${list}${more}</ul>`
     });
   } else {
-    setImportStatus({ status: "status-ok", message: "Import OK", details: "" });
+    setImportStatus({ status: "status-ok", message: "Eingaben OK", details: "" });
   }
 }
 
@@ -1679,26 +2212,14 @@ function initEvents() {
     tab.addEventListener("click", () => handleTabChange(tab.dataset.tab));
   });
 
-  elements.xlsxInput.addEventListener("change", async (event) => {
-    const file = event.target.files[0];
-    if (!file) {
-      return;
-    }
-    elements.fileMeta.textContent = `${file.name} (${Math.round(file.size / 1024)} KB)`;
-    try {
-      setImportStatus({ status: "status-ok", message: "Import läuft…", details: "" });
-      const extension = file.name.split(".").pop().toLowerCase();
-      const tables = extension === "csv" ? await parseCsvToTables(file) : await parseXlsxToTables(file);
-      applyImport({
-        tables,
-        fileName: file.name,
-        fileMetaText: `${file.name} (${Math.round(file.size / 1024)} KB)`
-      });
-    } catch (error) {
-      state.validation.errors = [error.message];
-      updateValidationStatus();
-    }
-  });
+  elements.addScenarioButton?.addEventListener("click", addScenario);
+  elements.addPlantButton?.addEventListener("click", addPlant);
+  elements.addFamilyButton?.addEventListener("click", addFamily);
+  elements.addTypeButton?.addEventListener("click", addChipType);
+  elements.addTechButton?.addEventListener("click", addTechnology);
+  elements.addMappingButton?.addEventListener("click", addMapping);
+
+  elements.typePlantSelect?.addEventListener("change", refreshInputSelects);
 
   elements.scenarioSelect.addEventListener("change", () => {
     updateScenarioUi();
@@ -1755,16 +2276,16 @@ function initEvents() {
 
 function init() {
   loadUiSettings();
-  const summary = loadImportSummary();
-  updateImportSummary(summary);
+  const summary = loadInputSummary();
+  updateInputSummary(summary);
   handleTabChange(state.ui.activeTab || "setup");
   elements.filterSearch.value = state.ui.filters.search;
   elements.filterPlant.value = state.ui.filters.plant;
   elements.filterFamily.value = state.ui.filters.family;
   elements.filterYear.value = state.ui.filters.year;
   initEvents();
-  setImportStatus({ status: "status-ok", message: "Bereit – Standarddaten werden geladen.", details: "" });
-  loadDefaultXlsx();
+  setImportStatus({ status: "status-ok", message: "Bereit – Eingaben werden geladen.", details: "" });
+  applyTables({ tables: loadInputTables(), note: "Eingaben geladen" });
 }
 
 init();
