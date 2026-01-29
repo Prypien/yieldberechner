@@ -358,7 +358,26 @@
       "special_start_year": null
     }
   ],
-  "technologies": [],
+  "technologies": [
+    {
+      "plant_id": "RtP1",
+      "tech_id": "SAKASA",
+      "scenario_id": "",
+      "name": "Sakasa",
+      "target_field": "SAW",
+      "static_extra_pct": -3,
+      "is_dynamic": 0
+    },
+    {
+      "plant_id": "RseP",
+      "tech_id": "SAKASA",
+      "scenario_id": "",
+      "name": "Sakasa",
+      "target_field": "SAW",
+      "static_extra_pct": -3,
+      "is_dynamic": 0
+    }
+  ],
   "technology_years": [],
   "chip_type_tech": []
 }
