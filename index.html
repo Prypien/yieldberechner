@@ -59,12 +59,12 @@
               <input id="scenario-end-input" class="input" type="number" />
             </div>
             <div class="field">
-              <label class="label" for="scenario-model-input">Yield-Modell</label>
+              <label class="label" for="scenario-model-input">VM Modell</label>
               <select id="scenario-model-input" class="input"></select>
             </div>
           </div>
           <div class="inline-actions">
-            <button id="add-scenario" class="btn">Szenario hinzufügen</button>
+            <button id="add-scenario" class="btn">Szenario speichern</button>
           </div>
           <div class="table-scroll compact" id="scenario-list"></div>
         </div>
@@ -72,45 +72,8 @@
 
       <div class="card">
         <div class="card-header">
-          <h3>Family-Parameter</h3>
-          <p class="muted">D0, D_in, t0 und tEnd pro Family pflegen (wirkt auf alle Typen der Family).</p>
-          <div class="inline-actions">
-            <button id="save-family" class="btn">Family speichern</button>
-          </div>
-        </div>
-        <div class="form-grid">
-          <div class="field">
-            <label class="label" for="family-plant-select">Werk</label>
-            <select id="family-plant-select" class="input"></select>
-          </div>
-          <div class="field">
-            <label class="label" for="family-select">Family</label>
-            <select id="family-select" class="input"></select>
-          </div>
-          <div class="field">
-            <label class="label" for="family-density-start">D0</label>
-            <input id="family-density-start" class="input" type="number" step="0.0001" />
-          </div>
-          <div class="field">
-            <label class="label" for="family-density-end">D_in</label>
-            <input id="family-density-end" class="input" type="number" step="0.0001" />
-          </div>
-          <div class="field">
-            <label class="label" for="family-t0-input">t0</label>
-            <input id="family-t0-input" class="input" type="number" />
-          </div>
-          <div class="field">
-            <label class="label" for="family-tend-input">tEnd</label>
-            <input id="family-tend-input" class="input" type="number" />
-          </div>
-        </div>
-        <div class="table-scroll compact" id="family-list"></div>
-      </div>
-
-      <div class="card">
-        <div class="card-header">
           <h3>Typen ausfüllen (Base)</h3>
-          <p class="muted">Bearbeite die vorhandenen Typen tabellarisch. Keine neuen Typen/Familien/Werke.</p>
+          <p class="muted">Bearbeite die vorhandenen Typen tabellarisch. Keine neuen Typen oder Families.</p>
           <div class="inline-actions">
             <button id="types-save" class="btn">Änderungen speichern</button>
             <button id="types-reset" class="btn btn-secondary">Änderungen verwerfen</button>
@@ -147,17 +110,8 @@
             <input id="scenario-end" class="input" type="number" />
           </div>
           <div class="field">
-            <label class="label" for="model-select">Yield-Modell</label>
+            <label class="label" for="model-select">VM Modell</label>
             <select id="model-select" class="input"></select>
-          </div>
-          <div class="field">
-            <label class="label" for="plant-select">Werke</label>
-            <select id="plant-select" class="input" multiple></select>
-            <div class="toggle-group" id="plant-toggle-group" aria-label="Werk-Auswahl Schnellwahl">
-              <button class="toggle-btn" type="button" data-plant-toggle="RseP">RseP</button>
-              <button class="toggle-btn" type="button" data-plant-toggle="RtP1">RtP1</button>
-              <button class="toggle-btn" type="button" data-plant-toggle="both">Beide</button>
-            </div>
           </div>
         </div>
         <div class="inline-actions">
@@ -169,7 +123,7 @@
       <div class="card">
         <div class="card-header">
           <h3>Hauptyields pro Jahr</h3>
-          <p class="muted">Gilt für das gesamte Szenario (überschreibt plant_base_yields).</p>
+          <p class="muted">Gilt für das gesamte Szenario (FAB/EPI/SAW/KGD/OSAT statisch pro Jahr).</p>
           <div class="inline-actions">
             <button id="scenario-yields-save" class="btn">Speichern</button>
             <button id="scenario-yields-reset" class="btn btn-secondary">Verwerfen</button>
@@ -238,10 +192,6 @@
           <input id="filter-search" class="input" type="search" placeholder="TTNR oder Name" />
         </div>
         <div class="field">
-          <label class="label" for="filter-plant">Werk</label>
-          <select id="filter-plant" class="input"></select>
-        </div>
-        <div class="field">
           <label class="label" for="filter-family">Family</label>
           <select id="filter-family" class="input"></select>
         </div>
@@ -259,7 +209,6 @@
                 <th data-sort="year">Year</th>
                 <th data-sort="ttnr">TTNR</th>
                 <th>Name</th>
-                <th>Plant</th>
                 <th>Family</th>
                 <th data-sort="fab">FAB</th>
                 <th>EPI</th>

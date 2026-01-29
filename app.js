@@ -12,9 +12,15 @@ const numericFields = new Set([
   "t_start",
   "t_end",
   "die_area_mm2",
+  "year",
+  "FAB",
+  "EPI",
+  "SAW",
+  "KGD",
+  "OSAT",
+  "VM",
   "static_extra_pct",
   "extra_pct",
-  "base_yield",
   "alpha",
   "n",
   "is_dynamic"
@@ -22,21 +28,19 @@ const numericFields = new Set([
 
 const requiredTables = [
   "scenarios",
-  "scenario_plants",
-  "plants",
-  "plant_base_yields",
   "families",
   "chip_types",
   "technologies",
   "technology_years",
   "chip_type_tech",
-  "scenario_year_yields"
+  "scenario_yields"
 ];
 
 const DEFAULT_TTNR = "0000000000";
 const yieldFields = ["EPI", "FAB", "VM", "SAW", "KGD", "OSAT"];
 const MAIN_YIELD_FIELDS = ["FAB", "EPI", "SAW", "KGD", "OSAT"];
 
+// FAB_MODEL_REGISTRY is used to compute VM yield now (single-werk setup).
 const FAB_MODEL_REGISTRY = {
   YM_POI: {
     label: "Poisson",
@@ -89,31 +93,26 @@ const HARD_CODED_YIELD_MODELS = [
 
 const DEFAULT_TABLES = {
   scenarios: [],
-  scenario_plants: [],
-  plants: [],
-  plant_base_yields: [],
   families: [],
   chip_types: [],
   technologies: [],
   technology_years: [],
   chip_type_tech: [],
-  scenario_year_yields: []
+  scenario_yields: []
 };
 
 const tableNameMap = {
   scenario: "scenarios",
   scenarios: "scenarios",
-  scenario_plants: "scenario_plants",
-  plants: "plants",
-  plant_base_yields: "plant_base_yields",
   families: "families",
   chip_types: "chip_types",
   chiptypes: "chip_types",
   technologies: "technologies",
   technology_years: "technology_years",
   chip_type_tech: "chip_type_tech",
-  scenario_year_yields: "scenario_year_yields",
-  scenarioyields: "scenario_year_yields",
+  scenario_year_yields: "scenario_yields",
+  scenario_yields: "scenario_yields",
+  scenarioyields: "scenario_yields",
   yield_models: "yield_models"
 };
 
@@ -125,7 +124,6 @@ const state = {
     activeTab: "setup",
     filters: {
       search: "",
-      plant: "",
       family: "",
       year: ""
     },
@@ -148,46 +146,6 @@ const elements = {
   scenarioModelInput: document.getElementById("scenario-model-input"),
   addScenarioButton: document.getElementById("add-scenario"),
   scenarioList: document.getElementById("scenario-list"),
-  plantIdInput: document.getElementById("plant-id-input"),
-  plantNameInput: document.getElementById("plant-name-input"),
-  plantYieldEpi: document.getElementById("plant-yield-epi"),
-  plantYieldVm: document.getElementById("plant-yield-vm"),
-  plantYieldSaw: document.getElementById("plant-yield-saw"),
-  plantYieldKgd: document.getElementById("plant-yield-kgd"),
-  plantYieldOsat: document.getElementById("plant-yield-osat"),
-  plantYieldEpiShip: document.getElementById("plant-yield-epi-ship"),
-  addPlantButton: document.getElementById("add-plant"),
-  plantList: document.getElementById("plant-list"),
-  familyPlantSelect: document.getElementById("family-plant-select"),
-  familySelect: document.getElementById("family-select"),
-  familyDensityStart: document.getElementById("family-density-start"),
-  familyDensityEnd: document.getElementById("family-density-end"),
-  familyT0Input: document.getElementById("family-t0-input"),
-  familyTEndInput: document.getElementById("family-tend-input"),
-  saveFamilyButton: document.getElementById("save-family"),
-  familyList: document.getElementById("family-list"),
-  typePlantSelect: document.getElementById("type-plant-select"),
-  typeFamilySelect: document.getElementById("type-family-select"),
-  typeTtnrInput: document.getElementById("type-ttnr-input"),
-  typeNameInput: document.getElementById("type-name-input"),
-  typeAreaInput: document.getElementById("type-area-input"),
-  typePackageInput: document.getElementById("type-package-input"),
-  typeStartYearInput: document.getElementById("type-start-year-input"),
-  addTypeButton: document.getElementById("add-type"),
-  typeList: document.getElementById("type-list"),
-  techScenarioSelect: document.getElementById("tech-scenario-select"),
-  techPlantSelect: document.getElementById("tech-plant-select"),
-  techIdInput: document.getElementById("tech-id-input"),
-  techNameInput: document.getElementById("tech-name-input"),
-  techTargetSelect: document.getElementById("tech-target-select"),
-  techStaticInput: document.getElementById("tech-static-input"),
-  techDynamicInput: document.getElementById("tech-dynamic-input"),
-  addTechButton: document.getElementById("add-tech"),
-  techList: document.getElementById("tech-list"),
-  mapTypeSelect: document.getElementById("map-type-select"),
-  mapTechSelect: document.getElementById("map-tech-select"),
-  addMappingButton: document.getElementById("add-mapping"),
-  mappingList: document.getElementById("mapping-list"),
   typesEditorTable: document.getElementById("types-editor-table"),
   typesSaveButton: document.getElementById("types-save"),
   typesResetButton: document.getElementById("types-reset"),
@@ -197,8 +155,6 @@ const elements = {
   scenarioStart: document.getElementById("scenario-start"),
   scenarioEnd: document.getElementById("scenario-end"),
   modelSelect: document.getElementById("model-select"),
-  plantSelect: document.getElementById("plant-select"),
-  plantToggleGroup: document.getElementById("plant-toggle-group"),
   scenarioYieldsTable: document.getElementById("scenario-yields-table"),
   scenarioYieldsQuickFill: document.getElementById("scenario-yields-quick-fill"),
   scenarioYieldsSave: document.getElementById("scenario-yields-save"),
@@ -211,7 +167,6 @@ const elements = {
   dataOverview: document.getElementById("data-overview"),
   tablePreview: document.getElementById("table-preview"),
   filterSearch: document.getElementById("filter-search"),
-  filterPlant: document.getElementById("filter-plant"),
   filterFamily: document.getElementById("filter-family"),
   filterYear: document.getElementById("filter-year"),
   resultsTable: document.getElementById("results-table"),
@@ -230,7 +185,12 @@ function loadUiSettings() {
   const stored = localStorage.getItem(STORAGE_KEY);
   if (stored) {
     try {
-      state.ui = { ...state.ui, ...JSON.parse(stored) };
+      const parsed = JSON.parse(stored);
+      state.ui = {
+        ...state.ui,
+        ...parsed,
+        filters: { ...state.ui.filters, ...(parsed.filters || {}) }
+      };
     } catch (error) {
       console.warn("Failed to parse UI settings", error);
     }
@@ -290,8 +250,7 @@ function upsertByKey(existingRows, baseRows, keyFields, { preserveNonNull = true
 
 function mergeBaseIntoTables(current, base) {
   const next = { ...structuredClone(DEFAULT_TABLES), ...current };
-  next.plants = upsertByKey(next.plants || [], base.plants || [], ["plant_id"], { preserveNonNull: true });
-  next.families = upsertByKey(next.families || [], base.families || [], ["plant_id", "family_id"], { preserveNonNull: true });
+  next.families = upsertByKey(next.families || [], base.families || [], ["family_id"], { preserveNonNull: true });
 
   const curTypes = next.chip_types || [];
   const baseTypes = base.chip_types || [];
@@ -324,7 +283,7 @@ function mergeBaseIntoTables(current, base) {
   next.technologies = upsertByKey(
     next.technologies || [],
     base.technologies || [],
-    ["plant_id", "tech_id", "scenario_id"],
+    ["tech_id", "scenario_id"],
     { preserveNonNull: true }
   );
   next.technology_years = upsertByKey(
@@ -341,8 +300,7 @@ function mergeBaseIntoTables(current, base) {
   );
 
   next.scenarios = next.scenarios || [];
-  next.scenario_plants = next.scenario_plants || [];
-  next.plant_base_yields = next.plant_base_yields || [];
+  next.scenario_yields = next.scenario_yields || [];
 
   return next;
 }
@@ -360,13 +318,33 @@ async function loadInputTables() {
   try {
     const base = await fetchBaseTables();
     if (current) {
-      return mergeBaseIntoTables(current, base);
+      return sanitizeTables(mergeBaseIntoTables(current, base));
     }
-    return base;
+    return sanitizeTables(base);
   } catch (error) {
     console.warn("Failed to load base_data.json", error);
-    return current || structuredClone(DEFAULT_TABLES);
+    return sanitizeTables(current || structuredClone(DEFAULT_TABLES));
   }
+}
+
+function sanitizeTables(tables) {
+  const cleaned = { ...structuredClone(DEFAULT_TABLES), ...tables };
+  if (cleaned.scenario_year_yields) {
+    cleaned.scenario_yields = [
+      ...(cleaned.scenario_yields || []),
+      ...cleaned.scenario_year_yields
+    ];
+    delete cleaned.scenario_year_yields;
+  }
+  delete cleaned.plants;
+  delete cleaned.plant_base_yields;
+  delete cleaned.scenario_plants;
+  Object.keys(DEFAULT_TABLES).forEach((key) => {
+    if (!cleaned[key]) {
+      cleaned[key] = [];
+    }
+  });
+  return cleaned;
 }
 
 function saveInputTables(tables) {
@@ -384,7 +362,8 @@ function normalizeTtnr(value) {
 
 function normalizeMappingValue(value) {
   const trimmed = String(value ?? "").trim();
-  if (!trimmed || trimmed.toLowerCase() === "null") {
+  const lowered = trimmed.toLowerCase();
+  if (!trimmed || lowered === "null" || lowered === "undefined") {
     return "";
   }
   return trimmed;
@@ -406,7 +385,7 @@ function normalizeChipTypesInTables(tables) {
   }));
   next.chip_type_tech = (next.chip_type_tech || []).map((row) => ({
     ...row,
-    ttnr: normalizeTtnr(row.ttnr)
+    ttnr: normalizeMappingTtnr(row.ttnr)
   }));
   return next;
 }
@@ -423,21 +402,10 @@ function getChipTypeRowKey(row, index) {
   return `INDEX:${index}`;
 }
 
-function isPackageChecked(value) {
-  if (value === true || value === 1) {
-    return true;
-  }
-  if (typeof value === "string") {
-    const normalized = value.trim().toLowerCase();
-    return ["1", "true", "ja", "yes", "x"].includes(normalized);
-  }
-  return false;
-}
-
 function normalizeTechFactor(value) {
   const number = Number(value);
   if (!Number.isFinite(number)) {
-    return 1;
+    return 0;
   }
   return number;
 }
@@ -827,11 +795,14 @@ function buildDataModel(tables) {
 
   const model = {
     scenarios: [],
-    plants: new Map(),
+    families: new Map(),
+    chipTypes: [],
+    chipTypeMap: new Map(),
+    technologies: new Map(),
     yieldModels: new Map(),
     chipTypeTech: new Map(),
     technologyYears: new Map(),
-    scenarioPlants: new Map(),
+    scenarioYields: new Map(),
     tables
   };
 
@@ -862,41 +833,14 @@ function buildDataModel(tables) {
     });
   });
 
-  (tables.plants || []).forEach((row) => {
-    model.plants.set(row.plant_id || row.id, {
-      id: row.plant_id || row.id,
-      name: row.name,
-      families: new Map(),
-      chipTypes: [],
-      technologies: new Map(),
-      baseYields: {}
-    });
-  });
-
-  (tables.plant_base_yields || []).forEach((row) => {
-    const plantId = row.plant_id;
-    const field = row.field;
-    if (!yieldFields.includes(field)) {
-      warnings.push(`Unbekanntes Yield-Feld in plant_base_yields: ${field}`);
-    }
-    const plant = model.plants.get(plantId);
-    if (!plant) {
-      errors.push(`plant_base_yields referenziert unbekanntes plant_id ${plantId}`);
-      return;
-    }
-    plant.baseYields[field] = parseNumber(row.base_yield) ?? 0;
-  });
-
   (tables.families || []).forEach((row) => {
-    const plant = model.plants.get(row.plant_id);
-    if (!plant) {
-      errors.push(`family ${row.family_id || row.id} referenziert unbekanntes plant_id ${row.plant_id}`);
+    const familyId = row.family_id || row.id;
+    if (!familyId) {
+      warnings.push("family Eintrag ohne family_id");
       return;
     }
-    const familyId = row.family_id || row.id;
-    plant.families.set(familyId, {
+    model.families.set(familyId, {
       id: familyId,
-      plantId: row.plant_id,
       D0: parseNumber(row.D0) ?? 0,
       D_in: parseNumber(row.D_in) ?? 0,
       t: parseNumber(row.t) ?? 0,
@@ -907,20 +851,20 @@ function buildDataModel(tables) {
   });
 
   (tables.technologies || []).forEach((row) => {
-    const plantId = row.plant_id || row.plantId || row.plant;
-    const plant = model.plants.get(plantId);
-    if (!plant) {
-      errors.push(`technology ${row.tech_id || row.id} referenziert unbekanntes plant_id ${plantId}`);
+    const techId = row.tech_id || row.technology_id || row.id;
+    if (!techId) {
       return;
     }
-    const techId = row.tech_id || row.technology_id || row.id;
-    plant.technologies.set(techId, {
+    const targetField = row.target_field || row.targetField || "FAB";
+    if (!yieldFields.includes(targetField)) {
+      warnings.push(`technology ${techId} target_field unbekannt: ${targetField}`);
+    }
+    model.technologies.set(techId, {
       id: techId,
-      plantId,
       scenarioId: row.scenario_id || row.scenarioId || "",
       name: row.name || techId,
-      targetField: row.target_field || row.targetField || "FAB",
-      staticExtraPct: parseNumber(row.static_extra_pct ?? row.staticExtraPct) ?? 1,
+      targetField: targetField,
+      staticExtraPct: parseNumber(row.static_extra_pct ?? row.staticExtraPct) ?? 0,
       isDynamic: Boolean(parseNumber(row.is_dynamic ?? row.isDynamic)),
       description: row.description || ""
     });
@@ -938,41 +882,23 @@ function buildDataModel(tables) {
 
   (tables.chip_types || []).forEach((row) => {
     const familyId = row.family_id;
+    const ttnr = normalizeTtnr(row.ttnr);
     const chipBase = {
-      ttnr: row.ttnr,
+      ttnr,
       name: row.name || row.description || "",
       familyId,
-      dieArea: parseNumber(row.die_area_mm2) ?? 0,
+      dieAreaMm2: parseNumber(row.die_area_mm2) ?? 0,
       package: row.package || "",
       specialStartYear: parseNumber(row.special_start_year) ?? 0
     };
 
-    if (row.plant_id) {
-      const plant = model.plants.get(row.plant_id);
-      if (!plant) {
-        errors.push(`chip_type ${row.ttnr} referenziert unbekanntes plant_id ${row.plant_id}`);
-        return;
-      }
-      const family = plant.families.get(familyId);
-      if (!family) {
-        errors.push(`chip_type ${row.ttnr} referenziert unbekannte family_id ${familyId}`);
-        return;
-      }
-      plant.chipTypes.push({ ...chipBase, plantId: row.plant_id });
+    if (!model.families.has(familyId)) {
+      errors.push(`chip_type ${ttnr || row.name} referenziert unbekannte family_id ${familyId}`);
       return;
     }
-
-    let matched = false;
-    model.plants.forEach((plant) => {
-      const family = plant.families.get(familyId);
-      if (!family) {
-        return;
-      }
-      matched = true;
-      plant.chipTypes.push({ ...chipBase, plantId: plant.id });
-    });
-    if (!matched) {
-      errors.push(`chip_type ${row.ttnr || row.name} referenziert unbekannte family_id ${familyId}`);
+    model.chipTypes.push(chipBase);
+    if (ttnr) {
+      model.chipTypeMap.set(ttnr, chipBase);
     }
   });
 
@@ -982,13 +908,11 @@ function buildDataModel(tables) {
     if (!ttnr || !techId) {
       return;
     }
-    const exists = findChipType(model, ttnr);
-    if (!exists) {
+    if (!model.chipTypeMap.has(ttnr)) {
       errors.push(`chip_type_tech referenziert unbekannte ttnr ${ttnr}`);
       return;
     }
-    const tech = findTechnology(model, techId);
-    if (!tech) {
+    if (!model.technologies.has(techId)) {
       errors.push(`chip_type_tech referenziert unbekanntes tech_id ${techId}`);
       return;
     }
@@ -1022,49 +946,34 @@ function buildDataModel(tables) {
     }
   });
 
-  (tables.scenario_plants || []).forEach((row) => {
+  (tables.scenario_yields || []).forEach((row) => {
     const scenarioId = row.scenario_id;
-    const plantId = row.plant_id;
-    const overrideId = row.override_yield_model_id || null;
-    const scenarioExists = model.scenarios.find((s) => s.id === scenarioId);
-    if (!scenarioExists) {
-      errors.push(`scenario_plants referenziert unbekanntes scenario_id ${scenarioId}`);
+    const year = parseNumber(row.year);
+    if (!scenarioId || !Number.isFinite(year)) {
       return;
     }
-    if (!model.plants.has(plantId)) {
-      errors.push(`scenario_plants referenziert unbekanntes plant_id ${plantId}`);
-      return;
+    if (!model.scenarioYields.has(scenarioId)) {
+      model.scenarioYields.set(scenarioId, new Map());
     }
-    if (overrideId && !model.yieldModels.has(overrideId)) {
-      errors.push(`scenario_plants override_yield_model_id unbekannt: ${overrideId}`);
-      return;
-    }
-    if (!model.scenarioPlants.has(scenarioId)) {
-      model.scenarioPlants.set(scenarioId, []);
-    }
-    model.scenarioPlants.get(scenarioId).push({ plantId, overrideId });
+    model.scenarioYields.get(scenarioId).set(Number(year), {
+      year: Number(year),
+      FAB: parseNumber(row.FAB),
+      EPI: parseNumber(row.EPI),
+      SAW: parseNumber(row.SAW),
+      KGD: parseNumber(row.KGD),
+      OSAT: parseNumber(row.OSAT)
+    });
   });
 
   return { model, errors, warnings };
 }
 
 function findTechnology(model, techId) {
-  for (const plant of model.plants.values()) {
-    if (plant.technologies.has(techId)) {
-      return plant.technologies.get(techId);
-    }
-  }
-  return null;
+  return model.technologies.get(techId) || null;
 }
 
 function findChipType(model, ttnr) {
-  for (const plant of model.plants.values()) {
-    const chip = plant.chipTypes.find((type) => type.ttnr === ttnr);
-    if (chip) {
-      return chip;
-    }
-  }
-  return null;
+  return model.chipTypeMap.get(ttnr) || null;
 }
 
 function computeDefectDensity(family, yIdx) {
@@ -1113,21 +1022,21 @@ function buildFabBreakdown(modelKey, D_year, A_cm2, params) {
   };
 }
 
-function getTechnologyFactor(model, technology, year) {
+function getTechnologyExtraPct(model, technology, year) {
   if (!technology.isDynamic) {
     return normalizeTechFactor(technology.staticExtraPct);
   }
   const overrides = model.technologyYears.get(technology.id);
   if (!overrides || overrides.size === 0) {
-    return 1;
+    return 0;
   }
   if (!overrides.has(year)) {
-    return 1;
+    return 0;
   }
   return normalizeTechFactor(overrides.get(year));
 }
 
-function computeResults({ scenario, plantsData, yieldModels, chipTypeTech, model }) {
+function computeResults({ scenario, yieldModels, chipTypeTech, model }) {
   const results = [];
   const yearStart = scenario.startYear;
   const yearEnd = scenario.endYear;
@@ -1136,80 +1045,79 @@ function computeResults({ scenario, plantsData, yieldModels, chipTypeTech, model
     years.push(year);
   }
 
-  plantsData.forEach((plant) => {
-    const selectedModel = yieldModels.get(plant.overrideModelId || scenario.selectedYieldModelId);
-    if (!selectedModel) {
-      return;
-    }
-    plant.chipTypes.forEach((chip) => {
-      years.forEach((year) => {
-        if (chip.specialStartYear && year < chip.specialStartYear) {
+  const selectedModel = yieldModels.get(scenario.selectedYieldModelId);
+  if (!selectedModel) {
+    return results;
+  }
+
+  model.chipTypes.forEach((chip) => {
+    years.forEach((year) => {
+      if (chip.specialStartYear && year < chip.specialStartYear) {
+        return;
+      }
+      const family = model.families.get(chip.familyId);
+      if (!family) {
+        return;
+      }
+      const yIdx = year - yearStart;
+      const D_year = computeDefectDensity(family, yIdx);
+      const A_cm2 = (chip.dieAreaMm2 || 0) / 100;
+      const vmYield = computeFabYield(selectedModel.id, D_year, A_cm2, selectedModel);
+      const vmBreakdown = buildFabBreakdown(selectedModel.id, D_year, A_cm2, selectedModel);
+
+      const scenarioRow = model.scenarioYields.get(scenario.id)?.get(year) || {};
+      const baseYields = {
+        FAB: clamp01(scenarioRow.FAB ?? 1),
+        EPI: clamp01(scenarioRow.EPI ?? 1),
+        SAW: clamp01(scenarioRow.SAW ?? 1),
+        KGD: clamp01(scenarioRow.KGD ?? 1),
+        OSAT: clamp01(scenarioRow.OSAT ?? 1),
+        VM: clamp01(vmYield)
+      };
+
+      const techMappings = chipTypeTech.get(chip.ttnr) || [];
+      const techDetails = techMappings.map((mapping) => {
+        const technology = model.technologies.get(mapping.techId);
+        if (!technology) {
+          return null;
+        }
+        const scenarioId = mapping.scenarioId || technology.scenarioId || "";
+        if (scenarioId && scenarioId !== scenario.id) {
+          return null;
+        }
+        const extraPct = getTechnologyExtraPct(model, technology, year);
+        return { ...technology, extraPct };
+      }).filter(Boolean);
+
+      techDetails.forEach((tech) => {
+        if (baseYields[tech.targetField] === undefined || baseYields[tech.targetField] === null) {
           return;
         }
-        const family = plant.families.get(chip.familyId);
-        const yIdx = year - yearStart;
-        const D_year = computeDefectDensity(family, yIdx);
-        const A_cm2 = (chip.dieArea || 0) / 100;
-        const fabYield = computeFabYield(selectedModel.id, D_year, A_cm2, selectedModel);
-        const fabBreakdown = buildFabBreakdown(selectedModel.id, D_year, A_cm2, selectedModel);
-
-        const baseYields = {};
-        yieldFields.forEach((field) => {
-          let base;
-          const override = getScenarioYieldValue(model.tables, scenario.id, year, field);
-          if (override !== null && override !== undefined) {
-            base = override;
-          } else {
-            base = field === "FAB" ? fabYield : (plant.baseYields[field] ?? 1);
-          }
-          baseYields[field] = clamp01(base);
-        });
-
-        const techMappings = chipTypeTech.get(chip.ttnr) || [];
-        const techDetails = techMappings.map((mapping) => {
-          const technology = plant.technologies.get(mapping.techId);
-          if (!technology) {
-            return null;
-          }
-          const scenarioId = mapping.scenarioId || technology.scenarioId || "";
-          if (scenarioId && scenarioId !== scenario.id) {
-            return null;
-          }
-          const factor = getTechnologyFactor(model, technology, year);
-          return { ...technology, factor };
-        }).filter(Boolean);
-
-        techDetails.forEach((tech) => {
-          if (baseYields[tech.targetField] === undefined || baseYields[tech.targetField] === null) {
-            return;
-          }
-          baseYields[tech.targetField] = clamp01(
-            baseYields[tech.targetField] * normalizeTechFactor(tech.factor)
-          );
-        });
-
-        const total = clamp01(
-          yieldFields.reduce((product, field) => product * (baseYields[field] ?? 1), 1)
+        baseYields[tech.targetField] = clamp01(
+          baseYields[tech.targetField] * (1 + (tech.extraPct || 0) / 100)
         );
+      });
 
-        results.push({
-          year,
-          plantId: plant.id,
-          plantName: plant.name,
-          ttnr: chip.ttnr,
-          name: chip.name,
-          familyId: chip.familyId,
-          package: chip.package,
-          D_year,
-          A_cm2,
-          yields: baseYields,
-          total,
-          breakdowns: {
-            FAB: fabBreakdown
-          },
-          techDetails,
-          model: selectedModel
-        });
+      const total = clamp01(
+        yieldFields.reduce((product, field) => product * (baseYields[field] ?? 1), 1)
+      );
+
+      results.push({
+        year,
+        ttnr: chip.ttnr,
+        name: chip.name,
+        familyId: chip.familyId,
+        familyName: family.name,
+        package: chip.package,
+        D_year,
+        A_cm2,
+        yields: baseYields,
+        total,
+        breakdowns: {
+          VM: vmBreakdown
+        },
+        techDetails,
+        model: selectedModel
       });
     });
   });
@@ -1325,48 +1233,22 @@ function renderListTable(container, columns, rows, onDelete) {
   container.appendChild(table);
 }
 
-function getTechOptionsForPlant(plantId) {
+function getTechOptions() {
   if (!state.model) {
     return [];
   }
-  const plant = state.model.plants.get(plantId);
-  if (!plant) {
-    return [];
-  }
-  return Array.from(plant.technologies.values()).map((tech) => ({ id: tech.id, name: tech.name }));
+  return Array.from(state.model.technologies.values()).map((tech) => ({
+    id: tech.id,
+    name: tech.name,
+    scenarioId: tech.scenarioId || ""
+  }));
 }
 
-function getFamiliesForPlant(plantId) {
-  if (!state.model) {
-    return [];
-  }
-  const plant = state.model.plants.get(plantId);
-  if (!plant) {
-    return [];
-  }
-  return Array.from(plant.families.values()).map((family) => ({ id: family.id, name: family.name || family.id }));
-}
-
-function getPlantLabel(plantId) {
-  if (!state.model || !plantId) {
-    return plantId || "";
-  }
-  const plant = state.model.plants.get(plantId);
-  if (!plant) {
-    return plantId;
-  }
-  return plant.name ? `${plant.name} (${plant.id})` : plant.id;
-}
-
-function getFamilyLabel(plantId, familyId) {
+function getFamilyLabel(familyId) {
   if (!state.model || !familyId) {
     return familyId || "";
   }
-  const plant = state.model.plants.get(plantId);
-  if (!plant) {
-    return familyId;
-  }
-  const family = plant.families.get(familyId);
+  const family = state.model.families.get(familyId);
   if (!family) {
     return familyId;
   }
@@ -1394,43 +1276,84 @@ function setMappedTechId(ttnr, techId) {
 }
 
 function getScenarioYieldValue(tables, scenarioId, year, field) {
-  const rows = tables.scenario_year_yields || [];
+  const rows = tables.scenario_yields || [];
   const hit = rows.find(
     (row) =>
       String(row.scenario_id) === String(scenarioId) &&
-      Number(row.year) === Number(year) &&
-      String(row.field) === String(field)
+      Number(row.year) === Number(year)
   );
   if (!hit) {
     return null;
   }
-  const value = parseNumber(hit.base_yield);
+  const value = parseNumber(hit[field]);
   return Number.isFinite(value) ? value : null;
 }
 
 function setScenarioYieldValue(tables, scenarioId, year, field, value) {
-  tables.scenario_year_yields = tables.scenario_year_yields || [];
-  tables.scenario_year_yields = tables.scenario_year_yields.filter(
-    (row) =>
-      !(
-        String(row.scenario_id) === String(scenarioId) &&
-        Number(row.year) === Number(year) &&
-        String(row.field) === String(field)
-      )
+  tables.scenario_yields = tables.scenario_yields || [];
+  const index = tables.scenario_yields.findIndex(
+    (row) => String(row.scenario_id) === String(scenarioId) && Number(row.year) === Number(year)
   );
-  if (value === null || value === "" || !Number.isFinite(Number(value))) {
+  const cleanValue = value === null || value === "" || !Number.isFinite(Number(value)) ? null : Number(value);
+  if (index >= 0) {
+    if (cleanValue === null) {
+      delete tables.scenario_yields[index][field];
+    } else {
+      tables.scenario_yields[index][field] = cleanValue;
+    }
     return;
   }
-  tables.scenario_year_yields.push({
+  if (cleanValue === null) {
+    return;
+  }
+  tables.scenario_yields.push({
     scenario_id: scenarioId,
     year: Number(year),
-    field,
-    base_yield: Number(value)
+    [field]: cleanValue
   });
 }
 
 function guessDefaultScenarioYields() {
   return 1.0;
+}
+
+function ensureScenarioYieldsForScenario(tables, scenario) {
+  if (!scenario) {
+    return;
+  }
+  const startYear = parseNumber(scenario.start_year ?? scenario.startYear);
+  const endYear = parseNumber(scenario.end_year ?? scenario.endYear);
+  if (!Number.isFinite(startYear) || !Number.isFinite(endYear)) {
+    return;
+  }
+  tables.scenario_yields = tables.scenario_yields || [];
+  const indexByYear = new Map();
+  tables.scenario_yields.forEach((row, index) => {
+    if (String(row.scenario_id) === String(scenario.scenario_id || scenario.id)) {
+      indexByYear.set(Number(row.year), index);
+    }
+  });
+
+  for (let year = startYear; year <= endYear; year += 1) {
+    if (indexByYear.has(year)) {
+      const row = tables.scenario_yields[indexByYear.get(year)];
+      MAIN_YIELD_FIELDS.forEach((field) => {
+        if (row[field] === null || row[field] === undefined || row[field] === "") {
+          row[field] = guessDefaultScenarioYields(field);
+        }
+      });
+    } else {
+      tables.scenario_yields.push({
+        scenario_id: scenario.scenario_id || scenario.id,
+        year,
+        FAB: guessDefaultScenarioYields("FAB"),
+        EPI: guessDefaultScenarioYields("EPI"),
+        SAW: guessDefaultScenarioYields("SAW"),
+        KGD: guessDefaultScenarioYields("KGD"),
+        OSAT: guessDefaultScenarioYields("OSAT")
+      });
+    }
+  }
 }
 
 function renderScenarioYieldsEditor() {
@@ -1440,7 +1363,11 @@ function renderScenarioYieldsEditor() {
   }
 
   const scenario = getSelectedScenario();
-  if (!scenario || !Number.isFinite(scenario.startYear) || !Number.isFinite(scenario.endYear)) {
+  const startYearInput = parseNumber(elements.scenarioStart?.value);
+  const endYearInput = parseNumber(elements.scenarioEnd?.value);
+  const startYear = Number.isFinite(startYearInput) ? startYearInput : scenario?.startYear;
+  const endYear = Number.isFinite(endYearInput) ? endYearInput : scenario?.endYear;
+  if (!scenario || !Number.isFinite(startYear) || !Number.isFinite(endYear)) {
     table.querySelector("thead").innerHTML = "";
     table.querySelector("tbody").innerHTML = "";
     if (elements.scenarioYieldsQuickFill) {
@@ -1453,7 +1380,7 @@ function renderScenarioYieldsEditor() {
   }
 
   const years = [];
-  for (let year = scenario.startYear; year <= scenario.endYear; year += 1) {
+  for (let year = startYear; year <= endYear; year += 1) {
     years.push(year);
   }
 
@@ -1573,8 +1500,7 @@ function renderTypesEditor() {
     return;
   }
   const chipTypes = state.tables.chip_types || [];
-  const plants = Array.from(state.model.plants.values());
-  const defaultPlantId = plants[0]?.id || "";
+  const techOptions = getTechOptions();
   const thead = table.querySelector("thead");
   const tbody = table.querySelector("tbody");
 
@@ -1582,7 +1508,6 @@ function renderTypesEditor() {
     <tr>
       <th>TTNR</th>
       <th>Name</th>
-      <th>Werk</th>
       <th>Family</th>
       <th>Die Area (mm²)</th>
       <th>Package</th>
@@ -1595,37 +1520,19 @@ function renderTypesEditor() {
 
   chipTypes.forEach((row, index) => {
     const ttnr = normalizeTtnr(row.ttnr);
-    const plantId = row.plant_id || defaultPlantId;
-    const families = getFamiliesForPlant(plantId);
-    const techOptions = getTechOptionsForPlant(plantId);
     const mappedTech = getMappedTechId(ttnr);
-    let familyId = (row.family_id ?? "").trim();
-    if (!familyId && families.length > 0) {
-      familyId = families[0].id;
-    }
+    const familyId = (row.family_id ?? "").trim();
+    const familyLabel = getFamilyLabel(familyId);
 
     const tr = document.createElement("tr");
     tr.dataset.rowKey = getChipTypeRowKey(row, index);
     tr.dataset.ttnr = ttnr;
 
-    const plantOptionsHtml = plants
-      .map(
-        (plant) =>
-          `<option value="${plant.id}" ${String(plantId) === String(plant.id) ? "selected" : ""}>${getPlantLabel(plant.id)}</option>`
-      )
-      .join("");
-
-    const familyOptionsHtml = families
-      .map(
-        (family) =>
-          `<option value="${family.id}" ${String(familyId) === String(family.id) ? "selected" : ""}>${family.name || family.id}</option>`
-      )
-      .join("");
-
     const techOptionsHtml = [`<option value="">–</option>`]
       .concat(
         techOptions.map(
-          (tech) => `<option value="${tech.id}" ${tech.id === mappedTech ? "selected" : ""}>${tech.name} (${tech.id})</option>`
+          (tech) =>
+            `<option value="${tech.id}" ${tech.id === mappedTech ? "selected" : ""}>${tech.name} (${tech.id})${tech.scenarioId ? ` · ${tech.scenarioId}` : ""}</option>`
         )
       )
       .join("");
@@ -1633,23 +1540,9 @@ function renderTypesEditor() {
     tr.innerHTML = `
       <td><strong>${ttnr}</strong></td>
       <td><input class="input" data-field="name" value="${row.name ?? ""}"></td>
-      <td>
-        <select class="input" data-field="plant_id">
-          ${plantOptionsHtml || `<option value="">(kein Werk)</option>`}
-        </select>
-      </td>
-      <td>
-        <select class="input" data-field="family_id">
-          ${familyOptionsHtml || `<option value="">(keine Families)</option>`}
-        </select>
-      </td>
+      <td><span>${familyLabel || familyId || "–"}</span></td>
       <td><input class="input" type="number" step="0.01" data-field="die_area_mm2" value="${row.die_area_mm2 ?? ""}"></td>
-      <td>
-        <label class="checkbox-label">
-          <input type="checkbox" data-field="package" ${isPackageChecked(row.package) ? "checked" : ""} />
-          Package
-        </label>
-      </td>
+      <td><input class="input" data-field="package" value="${row.package ?? ""}"></td>
       <td>
         <label class="checkbox-label">
           <input type="checkbox" data-field="special_start_year_enabled" ${Number.isFinite(parseNumber(row.special_start_year)) ? "checked" : ""} />
@@ -1666,8 +1559,6 @@ function renderTypesEditor() {
 
     tbody.appendChild(tr);
 
-    const plantSelect = tr.querySelector("[data-field=\"plant_id\"]");
-    const familySelect = tr.querySelector("[data-field=\"family_id\"]");
     const specialToggle = tr.querySelector("[data-field=\"special_start_year_enabled\"]");
     const specialInput = tr.querySelector("[data-field=\"special_start_year\"]");
 
@@ -1681,52 +1572,7 @@ function renderTypesEditor() {
       }
     };
 
-    const updateFamilyOptions = () => {
-      if (!plantSelect || !familySelect) {
-        return;
-      }
-      const nextPlantId = plantSelect.value;
-      const nextFamilies = getFamiliesForPlant(nextPlantId);
-      const currentFamily = familySelect.value;
-      familySelect.innerHTML =
-        nextFamilies
-          .map(
-            (family) =>
-              `<option value="${family.id}">${family.name || family.id}</option>`
-          )
-          .join("") || `<option value="">(keine Families)</option>`;
-      if (nextFamilies.find((family) => family.id === currentFamily)) {
-        familySelect.value = currentFamily;
-      } else if (nextFamilies.length > 0) {
-        familySelect.value = nextFamilies[0].id;
-      }
-    };
-
-    const updateTechOptions = () => {
-      const techSelect = tr.querySelector("[data-field=\"tech_id\"]");
-      if (!techSelect || !plantSelect) {
-        return;
-      }
-      const nextTechOptions = getTechOptionsForPlant(plantSelect.value);
-      const currentTech = techSelect.value;
-      techSelect.innerHTML = [`<option value="">–</option>`]
-        .concat(
-          nextTechOptions.map(
-            (tech) => `<option value="${tech.id}">${tech.name} (${tech.id})</option>`
-          )
-        )
-        .join("");
-      if (nextTechOptions.find((tech) => tech.id === currentTech)) {
-        techSelect.value = currentTech;
-      }
-    };
-
     syncSpecialInput();
-
-    plantSelect?.addEventListener("change", () => {
-      updateFamilyOptions();
-      updateTechOptions();
-    });
 
     specialToggle?.addEventListener("change", syncSpecialInput);
   });
@@ -1752,16 +1598,13 @@ function saveTypesEditorChanges() {
       return original;
     }
     const getVal = (field) => tr.querySelector(`[data-field="${field}"]`)?.value ?? "";
-    const packageChecked = Boolean(tr.querySelector("[data-field=\"package\"]")?.checked);
     const specialEnabled = Boolean(tr.querySelector("[data-field=\"special_start_year_enabled\"]")?.checked);
     const specialYear = specialEnabled ? parseNumber(getVal("special_start_year")) : null;
     return {
       ...original,
       name: getVal("name").trim(),
-      plant_id: getVal("plant_id").trim(),
-      family_id: getVal("family_id").trim(),
       die_area_mm2: parseNumber(getVal("die_area_mm2")),
-      package: packageChecked ? 1 : 0,
+      package: getVal("package").trim(),
       special_start_year: specialYear
     };
   });
@@ -1808,98 +1651,16 @@ function refreshInputSelects() {
     }
   }
 
-  const plantIds = Array.from(state.model.plants.keys());
-  if (elements.familyPlantSelect) {
-    updateSelect(elements.familyPlantSelect, plantIds, elements.familyPlantSelect.value, (id) => id);
-    if (!elements.familyPlantSelect.value && plantIds.length > 0) {
-      elements.familyPlantSelect.value = plantIds[0];
-    }
-  }
-  if (elements.typePlantSelect) {
-    updateSelect(elements.typePlantSelect, plantIds, elements.typePlantSelect.value, (id) => id);
-    if (!elements.typePlantSelect.value && plantIds.length > 0) {
-      elements.typePlantSelect.value = plantIds[0];
-    }
-  }
-  if (elements.techPlantSelect) {
-    updateSelect(elements.techPlantSelect, plantIds, elements.techPlantSelect.value, (id) => id);
-    if (!elements.techPlantSelect.value && plantIds.length > 0) {
-      elements.techPlantSelect.value = plantIds[0];
-    }
-  }
+  hydrateScenarioDefaults();
+}
 
-  const scenarios = state.model.scenarios.map((scenario) => scenario.id);
-  if (elements.techScenarioSelect) {
-    updateSelect(elements.techScenarioSelect, ["", ...scenarios], elements.techScenarioSelect.value, (id) => {
-      if (!id) {
-        return "Global";
-      }
-      return id;
-    });
+function hydrateScenarioDefaults() {
+  if (!state.model || !elements.scenarioSelect) {
+    return;
   }
-
-  if (elements.techTargetSelect) {
-    updateSelect(elements.techTargetSelect, yieldFields, elements.techTargetSelect.value, (id) => id);
+  if (!elements.scenarioSelect.value && state.model.scenarios.length > 0) {
+    elements.scenarioSelect.value = state.model.scenarios[0].id;
   }
-
-  if (elements.familyPlantSelect && elements.familySelect) {
-    const familyPlantId = elements.familyPlantSelect.value;
-    const familyOptions = [];
-    const familyPlant = state.model.plants.get(familyPlantId);
-    if (familyPlant) {
-      familyPlant.families.forEach((family) => familyOptions.push(family.id));
-    }
-    updateSelect(elements.familySelect, familyOptions, elements.familySelect.value, (id) => id);
-    if (!elements.familySelect.value && familyOptions.length > 0) {
-      elements.familySelect.value = familyOptions[0];
-    }
-  }
-
-  if (elements.typePlantSelect && elements.typeFamilySelect) {
-    const selectedPlant = elements.typePlantSelect.value;
-    const families = [];
-    state.model.plants.forEach((plant) => {
-      if (selectedPlant && plant.id !== selectedPlant) {
-        return;
-      }
-      plant.families.forEach((family) => families.push(family.id));
-    });
-    updateSelect(elements.typeFamilySelect, families, elements.typeFamilySelect.value, (id) => id);
-  }
-
-  if (elements.mapTypeSelect) {
-    const chipTypes = new Set();
-    state.model.plants.forEach((plant) => {
-      plant.chipTypes.forEach((chip) => {
-        if (chip.ttnr) {
-          chipTypes.add(chip.ttnr);
-        }
-      });
-    });
-    updateSelect(elements.mapTypeSelect, Array.from(chipTypes), elements.mapTypeSelect.value, (id) => id);
-  }
-
-  if (elements.mapTechSelect) {
-    const technologies = [];
-    state.model.plants.forEach((plant) => {
-      plant.technologies.forEach((tech) => {
-        technologies.push({
-          id: tech.id,
-          label: `${tech.name} (${tech.id})${tech.scenarioId ? ` · ${tech.scenarioId}` : ""}`,
-          scenarioId: tech.scenarioId || ""
-        });
-      });
-    });
-    elements.mapTechSelect.innerHTML = "";
-    technologies.forEach((tech) => {
-      const option = document.createElement("option");
-      option.value = tech.id;
-      option.textContent = tech.label;
-      elements.mapTechSelect.appendChild(option);
-    });
-  }
-
-  hydrateFamilyEditorFromSelection();
 }
 
 function renderInputLists() {
@@ -1916,77 +1677,6 @@ function renderInputLists() {
     ],
     tables.scenarios || [],
     (row) => deleteScenario(row.scenario_id || row.id)
-  );
-
-  renderListTable(
-    elements.plantList,
-    [
-      { key: "plant_id", label: "Werk-ID", format: (_, row) => row.plant_id || row.id },
-      { key: "name", label: "Name" }
-    ],
-    tables.plants || [],
-    (row) => deletePlant(row.plant_id || row.id)
-  );
-
-  renderListTable(
-    elements.familyList,
-    [
-      { key: "family_id", label: "Family-ID", format: (_, row) => row.family_id || row.id },
-      { key: "name", label: "Name" },
-      { key: "plant_id", label: "Werk" },
-      { key: "D0", label: "D0" },
-      { key: "D_in", label: "D_in" },
-      { key: "t_start", label: "t0" },
-      { key: "t_end", label: "tEnd" }
-    ],
-    tables.families || [],
-    (row) => deleteFamily(row.plant_id, row.family_id || row.id)
-  );
-
-  renderListTable(
-    elements.typeList,
-    [
-      { key: "ttnr", label: "TTNR" },
-      { key: "name", label: "Name" },
-      {
-        key: "plant_id",
-        label: "Werk",
-        format: (value) => (value ? getPlantLabel(value) : "Alle Werke")
-      },
-      {
-        key: "family_id",
-        label: "Family",
-        format: (value, row) => getFamilyLabel(row.plant_id, value) || value
-      },
-      { key: "die_area_mm2", label: "Fläche mm²" }
-    ],
-    tables.chip_types || [],
-    (row) => deleteChipType(row.ttnr)
-  );
-
-  renderListTable(
-    elements.techList,
-    [
-      { key: "tech_id", label: "Tech-ID", format: (_, row) => row.tech_id || row.id },
-      { key: "name", label: "Name" },
-      { key: "plant_id", label: "Werk" },
-      { key: "scenario_id", label: "Szenario", format: (_, row) => row.scenario_id || "Global" },
-      { key: "target_field", label: "Field" },
-      { key: "static_extra_pct", label: "Faktor", format: (value) => formatDecimal(value, 4) },
-      { key: "is_dynamic", label: "Dynamisch", format: (value) => (Number(value) ? "Ja" : "Nein") }
-    ],
-    tables.technologies || [],
-    (row) => deleteTechnology(row.tech_id || row.id, row.plant_id)
-  );
-
-  renderListTable(
-    elements.mappingList,
-    [
-      { key: "ttnr", label: "TTNR" },
-      { key: "tech_id", label: "Tech-ID", format: (_, row) => row.tech_id || row.technology_id || row.id }
-    ],
-    tables.chip_type_tech || [],
-    (row) => deleteMapping(row.ttnr, row.tech_id || row.technology_id || row.id)
   );
 }
 
@@ -2010,205 +1700,17 @@ function addScenario() {
   } else {
     tables.scenarios.push(row);
   }
+  ensureScenarioYieldsForScenario(tables, row);
   applyTables({ tables, note: `Szenario ${name} gespeichert` });
   elements.scenarioNameInput.value = "";
   elements.scenarioStartInput.value = "";
   elements.scenarioEndInput.value = "";
 }
 
-function addPlant() {
-  const id = elements.plantIdInput.value.trim();
-  if (!id) {
-    return;
-  }
-  const tables = getWorkingTables();
-  const plantRow = {
-    plant_id: id,
-    name: elements.plantNameInput.value.trim() || id
-  };
-  const index = tables.plants.findIndex((plant) => (plant.plant_id || plant.id) === id);
-  if (index >= 0) {
-    tables.plants[index] = plantRow;
-  } else {
-    tables.plants.push(plantRow);
-  }
-
-  const yieldValues = {
-    EPI: parseNumber(elements.plantYieldEpi.value),
-    VM: parseNumber(elements.plantYieldVm.value),
-    SAW: parseNumber(elements.plantYieldSaw.value),
-    KGD: parseNumber(elements.plantYieldKgd.value),
-    OSAT: parseNumber(elements.plantYieldOsat.value)
-  };
-  tables.plant_base_yields = tables.plant_base_yields.filter((row) => row.plant_id !== id);
-  Object.entries(yieldValues).forEach(([field, value]) => {
-    tables.plant_base_yields.push({
-      plant_id: id,
-      field,
-      base_yield: Number.isFinite(value) ? value : 1
-    });
-  });
-
-  applyTables({ tables, note: `Werk ${id} gespeichert` });
-  elements.plantIdInput.value = "";
-  elements.plantNameInput.value = "";
-  elements.plantYieldEpi.value = "";
-  elements.plantYieldVm.value = "";
-  elements.plantYieldSaw.value = "";
-  elements.plantYieldKgd.value = "";
-  elements.plantYieldOsat.value = "";
-}
-
-function hydrateFamilyEditorFromSelection() {
-  if (!elements.familyPlantSelect || !elements.familySelect) {
-    return;
-  }
-  const plantId = elements.familyPlantSelect.value;
-  const familyId = elements.familySelect.value;
-  if (!plantId || !familyId) {
-    elements.familyDensityStart.value = "";
-    elements.familyDensityEnd.value = "";
-    elements.familyT0Input.value = "";
-    elements.familyTEndInput.value = "";
-    return;
-  }
-  const row = (state.tables?.families || []).find(
-    (family) => family.plant_id === plantId && (family.family_id || family.id) === familyId
-  );
-  if (!row) {
-    elements.familyDensityStart.value = "";
-    elements.familyDensityEnd.value = "";
-    elements.familyT0Input.value = "";
-    elements.familyTEndInput.value = "";
-    return;
-  }
-  elements.familyDensityStart.value = row.D0 ?? "";
-  elements.familyDensityEnd.value = row.D_in ?? "";
-  elements.familyT0Input.value = row.t_start ?? row.t0 ?? "";
-  elements.familyTEndInput.value = row.t_end ?? row.tEnd ?? "";
-}
-
-function saveFamilyEdits() {
-  if (!elements.familyPlantSelect || !elements.familySelect) {
-    return;
-  }
-  const plantId = elements.familyPlantSelect.value;
-  const familyId = elements.familySelect.value;
-  if (!plantId || !familyId) {
-    return;
-  }
-  const tables = getWorkingTables();
-  const index = tables.families.findIndex(
-    (family) => family.plant_id === plantId && (family.family_id || family.id) === familyId
-  );
-  const existing = index >= 0 ? tables.families[index] : null;
-  const row = {
-    plant_id: plantId,
-    family_id: familyId,
-    name: existing?.name || familyId,
-    D0: parseNumber(elements.familyDensityStart.value),
-    D_in: parseNumber(elements.familyDensityEnd.value),
-    t_start: parseNumber(elements.familyT0Input.value),
-    t_end: parseNumber(elements.familyTEndInput.value)
-  };
-  if (index >= 0) {
-    tables.families[index] = { ...existing, ...row };
-  } else {
-    tables.families.push(row);
-  }
-  applyTables({ tables, note: `Family ${familyId} gespeichert` });
-}
-
-function addChipType() {
-  if (!elements.typePlantSelect || !elements.typeFamilySelect) {
-    return;
-  }
-  const plantId = elements.typePlantSelect.value;
-  const familyId = elements.typeFamilySelect.value;
-  const ttnr = elements.typeTtnrInput.value.trim();
-  if (!plantId || !familyId || !ttnr) {
-    return;
-  }
-  const tables = getWorkingTables();
-  const row = {
-    plant_id: plantId,
-    family_id: familyId,
-    ttnr,
-    name: elements.typeNameInput.value.trim() || ttnr,
-    die_area_mm2: parseNumber(elements.typeAreaInput.value),
-    package: elements.typePackageInput.value.trim(),
-    special_start_year: parseNumber(elements.typeStartYearInput.value)
-  };
-  const index = tables.chip_types.findIndex((chip) => chip.ttnr === ttnr);
-  if (index >= 0) {
-    tables.chip_types[index] = row;
-  } else {
-    tables.chip_types.push(row);
-  }
-  applyTables({ tables, note: `Typ ${ttnr} gespeichert` });
-  elements.typeTtnrInput.value = "";
-  elements.typeNameInput.value = "";
-  elements.typeAreaInput.value = "";
-  elements.typePackageInput.value = "";
-  elements.typeStartYearInput.value = "";
-}
-
-function addTechnology() {
-  if (!elements.techPlantSelect) {
-    return;
-  }
-  const plantId = elements.techPlantSelect.value;
-  const techId = elements.techIdInput.value.trim();
-  if (!plantId || !techId) {
-    return;
-  }
-  const tables = getWorkingTables();
-  const scenarioId = elements.techScenarioSelect.value;
-  const row = {
-    plant_id: plantId,
-    tech_id: techId,
-    scenario_id: scenarioId,
-    name: elements.techNameInput.value.trim() || techId,
-    target_field: elements.techTargetSelect.value,
-    static_extra_pct: parseNumber(elements.techStaticInput.value) ?? 1,
-    is_dynamic: elements.techDynamicInput.checked ? 1 : 0
-  };
-  const index = tables.technologies.findIndex(
-    (tech) => (tech.tech_id || tech.id) === techId && tech.plant_id === plantId
-  );
-  if (index >= 0) {
-    tables.technologies[index] = row;
-  } else {
-    tables.technologies.push(row);
-  }
-  applyTables({ tables, note: `Technologie ${techId} gespeichert` });
-  elements.techIdInput.value = "";
-  elements.techNameInput.value = "";
-  elements.techStaticInput.value = "";
-  elements.techDynamicInput.checked = false;
-}
-
-function addMapping() {
-  if (!elements.mapTypeSelect || !elements.mapTechSelect) {
-    return;
-  }
-  const ttnr = normalizeMappingTtnr(elements.mapTypeSelect.value);
-  const techId = normalizeMappingValue(elements.mapTechSelect.value);
-  if (!ttnr || !techId) {
-    return;
-  }
-  const tables = getWorkingTables();
-  const exists = tables.chip_type_tech.some((row) => row.ttnr === ttnr && (row.tech_id || row.id) === techId);
-  if (!exists) {
-    tables.chip_type_tech.push({ ttnr, tech_id: techId });
-  }
-  applyTables({ tables, note: `Zuordnung ${ttnr} → ${techId}` });
-}
-
 function deleteScenario(scenarioId) {
   const tables = getWorkingTables();
   tables.scenarios = tables.scenarios.filter((row) => (row.scenario_id || row.id) !== scenarioId);
-  tables.scenario_plants = tables.scenario_plants.filter((row) => row.scenario_id !== scenarioId);
+  tables.scenario_yields = tables.scenario_yields.filter((row) => row.scenario_id !== scenarioId);
   const removedTechIds = tables.technologies
     .filter((row) => row.scenario_id === scenarioId)
     .map((row) => row.tech_id || row.id);
@@ -2222,73 +1724,12 @@ function deleteScenario(scenarioId) {
   applyTables({ tables, note: `Szenario ${scenarioId} gelöscht` });
 }
 
-function deletePlant(plantId) {
-  const tables = getWorkingTables();
-  const removedTechIds = tables.technologies
-    .filter((row) => row.plant_id === plantId)
-    .map((row) => row.tech_id || row.id);
-  tables.plants = tables.plants.filter((row) => (row.plant_id || row.id) !== plantId);
-  tables.plant_base_yields = tables.plant_base_yields.filter((row) => row.plant_id !== plantId);
-  tables.scenario_plants = tables.scenario_plants.filter((row) => row.plant_id !== plantId);
-  tables.families = tables.families.filter((row) => row.plant_id !== plantId);
-  tables.chip_types = tables.chip_types.filter((row) => row.plant_id !== plantId);
-  tables.technologies = tables.technologies.filter((row) => row.plant_id !== plantId);
-  tables.technology_years = tables.technology_years.filter(
-    (row) => !removedTechIds.includes(row.tech_id || row.technology_id || row.id)
-  );
-  tables.chip_type_tech = tables.chip_type_tech.filter(
-    (row) => !removedTechIds.includes(row.tech_id || row.technology_id || row.id)
-  );
-  applyTables({ tables, note: `Werk ${plantId} gelöscht` });
-}
-
-function deleteFamily(plantId, familyId) {
-  const tables = getWorkingTables();
-  tables.families = tables.families.filter(
-    (row) => !(row.plant_id === plantId && (row.family_id || row.id) === familyId)
-  );
-  const removedTypes = tables.chip_types.filter((row) => row.family_id === familyId).map((row) => row.ttnr);
-  tables.chip_types = tables.chip_types.filter((row) => row.family_id !== familyId);
-  tables.chip_type_tech = tables.chip_type_tech.filter((row) => !removedTypes.includes(row.ttnr));
-  applyTables({ tables, note: `Familie ${familyId} gelöscht` });
-}
-
-function deleteChipType(ttnr) {
-  const tables = getWorkingTables();
-  tables.chip_types = tables.chip_types.filter((row) => row.ttnr !== ttnr);
-  tables.chip_type_tech = tables.chip_type_tech.filter((row) => row.ttnr !== ttnr);
-  applyTables({ tables, note: `Typ ${ttnr} gelöscht` });
-}
-
-function deleteTechnology(techId, plantId) {
-  const tables = getWorkingTables();
-  tables.technologies = tables.technologies.filter(
-    (row) => !((row.tech_id || row.id) === techId && row.plant_id === plantId)
-  );
-  tables.technology_years = tables.technology_years.filter(
-    (row) => (row.tech_id || row.technology_id || row.id) !== techId
-  );
-  tables.chip_type_tech = tables.chip_type_tech.filter(
-    (row) => (row.tech_id || row.technology_id || row.id) !== techId
-  );
-  applyTables({ tables, note: `Technologie ${techId} gelöscht` });
-}
-
-function deleteMapping(ttnr, techId) {
-  const tables = getWorkingTables();
-  tables.chip_type_tech = tables.chip_type_tech.filter(
-    (row) => !(row.ttnr === ttnr && (row.tech_id || row.technology_id || row.id) === techId)
-  );
-  applyTables({ tables, note: `Zuordnung entfernt` });
-}
-
 function updateScenarioUi() {
   const scenario = getSelectedScenario();
   if (!scenario) {
     elements.scenarioName.value = "";
     elements.scenarioStart.value = "";
     elements.scenarioEnd.value = "";
-    elements.plantSelect.innerHTML = "";
     elements.modelSelect.innerHTML = "";
     updateFilters();
     return;
@@ -2296,7 +1737,6 @@ function updateScenarioUi() {
   elements.scenarioName.value = scenario.name || "";
   elements.scenarioStart.value = scenario.startYear ?? "";
   elements.scenarioEnd.value = scenario.endYear ?? "";
-  renderPlantSelect(scenario);
   renderYieldModels(scenario);
   updateFilters();
 }
@@ -2420,10 +1860,9 @@ function renderModelSettings() {
 function updateTechnologyInTables(tech, updates, note) {
   const tables = getWorkingTables();
   const index = tables.technologies.findIndex(
-    (row) => (row.tech_id || row.id) === tech.id && row.plant_id === tech.plantId
+    (row) => (row.tech_id || row.id) === tech.id
   );
   const nextRow = {
-    plant_id: tech.plantId,
     tech_id: tech.id,
     scenario_id: tech.scenarioId || "",
     name: tech.name,
@@ -2465,19 +1904,14 @@ function renderTechnologySettings() {
     return;
   }
 
-  const technologies = [];
-  state.model.plants.forEach((plant) => {
-    plant.technologies.forEach((tech) => {
-      technologies.push({ tech, plant });
-    });
-  });
+  const technologies = Array.from(state.model.technologies.values());
 
   if (technologies.length === 0) {
     elements.techSettings.innerHTML = "<p class=\"muted\">Keine Technologien vorhanden.</p>";
     return;
   }
 
-  technologies.forEach(({ tech, plant }) => {
+  technologies.forEach((tech) => {
     const card = document.createElement("div");
     card.className = "card tech-card";
     const overrides = ensureTechnologyOverrides(state.model, tech.id);
@@ -2498,7 +1932,7 @@ function renderTechnologySettings() {
       <div class="model-header">
         <div>
           <h3>${tech.name}</h3>
-          <div class="muted">ID: ${tech.id} · Werk: ${plant.name || plant.id} · Szenario: ${tech.scenarioId || "Global"}</div>
+          <div class="muted">ID: ${tech.id} · Szenario: ${tech.scenarioId || "Global"}</div>
         </div>
         <div class="badge">${tech.targetField}</div>
       </div>
@@ -2514,8 +1948,8 @@ function renderTechnologySettings() {
           </select>
         </div>
         <div class="field">
-          <label class="label">Faktor (statisch)</label>
-          <input class="input" type="number" step="0.0001" data-field="staticExtraPct" value="${tech.staticExtraPct ?? 1}" />
+          <label class="label">Extra % (statisch)</label>
+          <input class="input" type="number" step="0.0001" data-field="staticExtraPct" value="${tech.staticExtraPct ?? 0}" />
         </div>
         <div class="field checkbox-field">
           <label class="label">Dynamisch</label>
@@ -2527,7 +1961,7 @@ function renderTechnologySettings() {
       </div>
       <div class="tech-years">
         <div class="tech-years-header">
-          <div class="label">Jahres-Overrides (Faktor)</div>
+        <div class="label">Jahres-Overrides (Extra %)</div>
           <button class="btn btn-secondary" type="button" data-action="add-year">Jahr hinzufügen</button>
         </div>
         <div class="tech-year-list">
@@ -2604,80 +2038,11 @@ function renderTechnologySettings() {
   });
 }
 
-function renderPlantSelect(scenario) {
-  elements.plantSelect.innerHTML = "";
-  if (!state.model) {
-    return;
-  }
-  const scenarioPlants = state.model.scenarioPlants.get(scenario.id);
-  const allowedPlantIds = scenarioPlants ? scenarioPlants.map((p) => p.plantId) : Array.from(state.model.plants.keys());
-
-  allowedPlantIds.forEach((plantId) => {
-    const plant = state.model.plants.get(plantId);
-    if (!plant) {
-      return;
-    }
-    const option = document.createElement("option");
-    option.value = plant.id;
-    option.textContent = plant.name;
-    option.selected = true;
-    elements.plantSelect.appendChild(option);
-  });
-  updatePlantToggleState();
-}
-
-function updatePlantToggleState() {
-  if (!elements.plantToggleGroup || !elements.plantSelect) {
-    return;
-  }
-  const selectedIds = new Set(Array.from(elements.plantSelect.selectedOptions).map((opt) => opt.value));
-  const availableIds = new Set(Array.from(elements.plantSelect.options).map((opt) => opt.value));
-  const hasRseP = selectedIds.has("RseP");
-  const hasRtP1 = selectedIds.has("RtP1");
-  elements.plantToggleGroup.querySelectorAll("[data-plant-toggle]").forEach((button) => {
-    const mode = button.dataset.plantToggle;
-    if (mode === "RseP") {
-      button.classList.toggle("active", hasRseP && !hasRtP1);
-      button.disabled = !availableIds.has("RseP");
-      return;
-    }
-    if (mode === "RtP1") {
-      button.classList.toggle("active", hasRtP1 && !hasRseP);
-      button.disabled = !availableIds.has("RtP1");
-      return;
-    }
-    if (mode === "both") {
-      button.classList.toggle("active", hasRseP && hasRtP1);
-      button.disabled = !availableIds.has("RseP") || !availableIds.has("RtP1");
-    }
-  });
-}
-
-function setPlantSelection(plantIds) {
-  const available = new Set(Array.from(elements.plantSelect.options).map((option) => option.value));
-  const selected = new Set(plantIds.filter((id) => available.has(id)));
-  Array.from(elements.plantSelect.options).forEach((option) => {
-    option.selected = selected.has(option.value);
-  });
-  updatePlantToggleState();
-  validateAndCompute();
-}
-
 function getSelectedScenario() {
   if (!state.model) {
     return null;
   }
   return state.model.scenarios.find((scenario) => scenario.id === elements.scenarioSelect.value) || state.model.scenarios[0];
-}
-
-function getSelectedPlants(scenario) {
-  const selectedIds = Array.from(elements.plantSelect.selectedOptions).map((opt) => opt.value);
-  const scenarioPlants = state.model.scenarioPlants.get(scenario.id) || [];
-  return selectedIds.map((id) => {
-    const plant = state.model.plants.get(id);
-    const override = scenarioPlants.find((entry) => entry.plantId === id);
-    return { ...plant, overrideModelId: override?.overrideId || null };
-  });
 }
 
 function updateFilters() {
@@ -2689,18 +2054,8 @@ function updateFilters() {
     updateSelect(elements.filterYear, [""], state.ui.filters.year, () => "Alle Jahre");
     return;
   }
-  const selectedPlants = getSelectedPlants(scenario);
   const families = new Set();
-  selectedPlants.forEach((plant) => {
-    plant.families.forEach((family) => families.add(family.id));
-  });
-
-  updateSelect(elements.filterPlant, ["", ...selectedPlants.map((plant) => plant.id)], state.ui.filters.plant, (id) => {
-    if (!id) {
-      return "Alle Werke";
-    }
-    return state.model.plants.get(id)?.name || id;
-  });
+  state.model.families.forEach((family) => families.add(family.id));
 
   updateSelect(elements.filterFamily, ["", ...Array.from(families)], state.ui.filters.family, (id) => id || "Alle Families");
 
@@ -2738,8 +2093,7 @@ function renderResults() {
       <td>${row.year}</td>
       <td>${row.ttnr}</td>
       <td>${row.name}</td>
-      <td>${row.plantName}</td>
-      <td>${row.familyId}</td>
+      <td>${row.familyName || row.familyId}</td>
       <td>${formatPct(row.yields.FAB)}</td>
       <td>${formatPct(row.yields.EPI)}</td>
       <td>${formatPct(row.yields.VM)}</td>
@@ -2756,9 +2110,6 @@ function renderResults() {
 function applyFilters(rows) {
   const search = state.ui.filters.search.toLowerCase();
   return rows.filter((row) => {
-    if (state.ui.filters.plant && row.plantId !== state.ui.filters.plant) {
-      return false;
-    }
     if (state.ui.filters.family && row.familyId !== state.ui.filters.family) {
       return false;
     }
@@ -2811,8 +2162,8 @@ function openDetails(row) {
   state.ui.sidepanelOpen = true;
   saveUiSettings();
   elements.detailPanel.classList.toggle("open", true);
-  const fabBreakdown = row.breakdowns?.FAB;
-  const inputs = fabBreakdown?.inputs || {};
+  const vmBreakdown = row.breakdowns?.VM;
+  const inputs = vmBreakdown?.inputs || {};
   const inputRows = Object.entries(inputs).map(
     ([key, value]) =>
       `<div class="detail-item"><strong>${key}</strong><span>${formatDecimal(value)}</span></div>`
@@ -2820,19 +2171,18 @@ function openDetails(row) {
   elements.detailBody.innerHTML = `
     <div class="detail-grid">
       <div class="detail-item"><strong>TTNR</strong><span>${row.ttnr}</span></div>
-      <div class="detail-item"><strong>Plant</strong><span>${row.plantName}</span></div>
-      <div class="detail-item"><strong>Family</strong><span>${row.familyId}</span></div>
+      <div class="detail-item"><strong>Family</strong><span>${row.familyName || row.familyId}</span></div>
       <div class="detail-item"><strong>Year</strong><span>${row.year}</span></div>
-      <div class="detail-item"><strong>Field</strong><span>FAB</span></div>
-      <div class="detail-item"><strong>Value</strong><span>${formatPct(row.yields.FAB)}</span></div>
+      <div class="detail-item"><strong>Field</strong><span>VM</span></div>
+      <div class="detail-item"><strong>Value</strong><span>${formatPct(row.yields.VM)}</span></div>
       <div class="detail-item"><strong>Model</strong><span>${row.model?.name || row.model?.id || "-"}</span></div>
     </div>
-    <h4>FAB Inputs</h4>
+    <h4>VM Inputs</h4>
     <div class="detail-grid">
       ${inputRows || "<p class=\"muted\">Keine Inputs verfügbar.</p>"}
     </div>
     <h4>SQL-Formel</h4>
-    <pre class="sql-block">${fabBreakdown?.sqlSubstituted || "-"}</pre>
+    <pre class="sql-block">${vmBreakdown?.sqlSubstituted || "-"}</pre>
     <h4>Station Yields</h4>
     <div class="detail-grid">
       ${yieldFields.map((field) => `<div class="detail-item"><strong>${field}</strong><span>${formatPct(row.yields[field])}</span></div>`).join("")}
@@ -2840,13 +2190,13 @@ function openDetails(row) {
     <h4>Technologien</h4>
     <div class="detail-grid">
       ${row.techDetails.length === 0 ? "<p class=\"muted\">Keine Technologien.</p>" : row.techDetails.map((tech) => `
-        <div class="detail-item"><strong>${tech.name}</strong><span>${tech.targetField} ×${formatDecimal(tech.factor, 4)}</span></div>
+        <div class="detail-item"><strong>${tech.name}</strong><span>${tech.targetField} ${formatDecimal(tech.extraPct, 4)}%</span></div>
       `).join("")}
     </div>
     <h4>Total</h4>
     <div class="badge">${formatPct(row.total)}</div>
   `;
-  elements.sqlPreview.textContent = fabBreakdown?.sqlSubstituted || "";
+  elements.sqlPreview.textContent = vmBreakdown?.sqlSubstituted || "";
 }
 
 function closeDetails() {
@@ -2858,7 +2208,7 @@ function closeDetails() {
 }
 
 function applyTables({ tables, note }) {
-  const normalizedTables = normalizeChipTypesInTables(tables);
+  const normalizedTables = normalizeChipTypesInTables(sanitizeTables(tables));
   state.tables = normalizedTables;
   saveInputTables(normalizedTables);
   const { model, errors, warnings } = buildDataModel(normalizedTables);
@@ -2965,17 +2315,8 @@ function validateAndCompute() {
     return;
   }
 
-  const selectedPlants = getSelectedPlants(scenario).filter(Boolean);
-  if (selectedPlants.length === 0) {
-    elements.calcHint.textContent = "Keine Werke ausgewählt.";
-    state.results = [];
-    renderResults();
-    return;
-  }
-
   state.results = computeResults({
     scenario,
-    plantsData: selectedPlants,
     yieldModels: state.model.yieldModels,
     chipTypeTech: state.model.chipTypeTech,
     model: state.model
@@ -3013,11 +2354,6 @@ function initEvents() {
   });
 
   elements.addScenarioButton?.addEventListener("click", addScenario);
-  elements.addPlantButton?.addEventListener("click", addPlant);
-  elements.saveFamilyButton?.addEventListener("click", saveFamilyEdits);
-  elements.addTypeButton?.addEventListener("click", addChipType);
-  elements.addTechButton?.addEventListener("click", addTechnology);
-  elements.addMappingButton?.addEventListener("click", addMapping);
   elements.typesSaveButton?.addEventListener("click", saveTypesEditorChanges);
   elements.typesResetButton?.addEventListener("click", resetTypesEditor);
   elements.scenarioYieldsSave?.addEventListener("click", saveScenarioYieldsEditorChanges);
@@ -3039,13 +2375,6 @@ function initEvents() {
     }
   });
 
-  elements.familyPlantSelect?.addEventListener("change", () => {
-    refreshInputSelects();
-    hydrateFamilyEditorFromSelection();
-  });
-  elements.familySelect?.addEventListener("change", hydrateFamilyEditorFromSelection);
-  elements.typePlantSelect?.addEventListener("change", refreshInputSelects);
-
   elements.scenarioSelect.addEventListener("change", () => {
     updateScenarioUi();
     renderScenarioYieldsEditor();
@@ -3053,10 +2382,6 @@ function initEvents() {
   });
 
   elements.modelSelect.addEventListener("change", validateAndCompute);
-  elements.plantSelect.addEventListener("change", () => {
-    updatePlantToggleState();
-    validateAndCompute();
-  });
   elements.scenarioStart.addEventListener("change", () => {
     renderScenarioYieldsEditor();
     validateAndCompute();
@@ -3067,33 +2392,8 @@ function initEvents() {
   });
   elements.runCalc.addEventListener("click", validateAndCompute);
 
-  elements.plantToggleGroup?.addEventListener("click", (event) => {
-    const button = event.target.closest("[data-plant-toggle]");
-    if (!button) {
-      return;
-    }
-    const mode = button.dataset.plantToggle;
-    if (mode === "both") {
-      setPlantSelection(["RseP", "RtP1"]);
-      return;
-    }
-    if (mode === "RseP") {
-      setPlantSelection(["RseP"]);
-      return;
-    }
-    if (mode === "RtP1") {
-      setPlantSelection(["RtP1"]);
-    }
-  });
-
   elements.filterSearch.addEventListener("input", (event) => {
     state.ui.filters.search = event.target.value;
-    saveUiSettings();
-    renderResults();
-  });
-
-  elements.filterPlant.addEventListener("change", (event) => {
-    state.ui.filters.plant = event.target.value;
     saveUiSettings();
     renderResults();
   });
@@ -3134,7 +2434,6 @@ async function init() {
   updateInputSummary(summary);
   handleTabChange(state.ui.activeTab || "setup");
   elements.filterSearch.value = state.ui.filters.search;
-  elements.filterPlant.value = state.ui.filters.plant;
   elements.filterFamily.value = state.ui.filters.family;
   elements.filterYear.value = state.ui.filters.year;
   initEvents();
