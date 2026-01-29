@@ -29,10 +29,12 @@ const requiredTables = [
   "chip_types",
   "technologies",
   "technology_years",
-  "chip_type_tech"
+  "chip_type_tech",
+  "scenario_year_yields"
 ];
 
 const yieldFields = ["EPI", "FAB", "VM", "SAW", "KGD", "OSAT", "EPI_SHIP"];
+const MAIN_YIELD_FIELDS = ["FAB", "EPI", "SAW", "KGD", "OSAT"];
 
 const FAB_MODEL_REGISTRY = {
   YM_POI: {
@@ -93,7 +95,8 @@ const DEFAULT_TABLES = {
   chip_types: [],
   technologies: [],
   technology_years: [],
-  chip_type_tech: []
+  chip_type_tech: [],
+  scenario_year_yields: []
 };
 
 const tableNameMap = {
@@ -108,6 +111,8 @@ const tableNameMap = {
   technologies: "technologies",
   technology_years: "technology_years",
   chip_type_tech: "chip_type_tech",
+  scenario_year_yields: "scenario_year_yields",
+  scenarioyields: "scenario_year_yields",
   yield_models: "yield_models"
 };
 
@@ -193,6 +198,10 @@ const elements = {
   scenarioEnd: document.getElementById("scenario-end"),
   modelSelect: document.getElementById("model-select"),
   plantSelect: document.getElementById("plant-select"),
+  scenarioYieldsTable: document.getElementById("scenario-yields-table"),
+  scenarioYieldsSave: document.getElementById("scenario-yields-save"),
+  scenarioYieldsReset: document.getElementById("scenario-yields-reset"),
+  scenarioYieldsStatus: document.getElementById("scenario-yields-status"),
   runCalc: document.getElementById("run-calc"),
   calcHint: document.getElementById("calc-hint"),
   modelSettings: document.getElementById("model-settings"),
@@ -1079,7 +1088,13 @@ function computeResults({ scenario, plantsData, yieldModels, chipTypeTech, model
 
         const baseYields = {};
         yieldFields.forEach((field) => {
-          const base = field === "FAB" ? fabYield : (plant.baseYields[field] ?? 1);
+          let base;
+          const override = getScenarioYieldValue(model.tables, scenario.id, year, field);
+          if (override !== null && override !== undefined) {
+            base = override;
+          } else {
+            base = field === "FAB" ? fabYield : (plant.baseYields[field] ?? 1);
+          }
           baseYields[field] = clamp01(base);
         });
 
@@ -1280,6 +1295,134 @@ function setMappedTechId(ttnr, techId) {
   applyTables({ tables, note: `Tech-Mapping aktualisiert: ${ttnr} → ${techId || "∅"}` });
 }
 
+function getScenarioYieldValue(tables, scenarioId, year, field) {
+  const rows = tables.scenario_year_yields || [];
+  const hit = rows.find(
+    (row) =>
+      String(row.scenario_id) === String(scenarioId) &&
+      Number(row.year) === Number(year) &&
+      String(row.field) === String(field)
+  );
+  if (!hit) {
+    return null;
+  }
+  const value = parseNumber(hit.base_yield);
+  return Number.isFinite(value) ? value : null;
+}
+
+function setScenarioYieldValue(tables, scenarioId, year, field, value) {
+  tables.scenario_year_yields = tables.scenario_year_yields || [];
+  tables.scenario_year_yields = tables.scenario_year_yields.filter(
+    (row) =>
+      !(
+        String(row.scenario_id) === String(scenarioId) &&
+        Number(row.year) === Number(year) &&
+        String(row.field) === String(field)
+      )
+  );
+  if (value === null || value === "" || !Number.isFinite(Number(value))) {
+    return;
+  }
+  tables.scenario_year_yields.push({
+    scenario_id: scenarioId,
+    year: Number(year),
+    field,
+    base_yield: Number(value)
+  });
+}
+
+function guessDefaultScenarioYields() {
+  return 1.0;
+}
+
+function renderScenarioYieldsEditor() {
+  const table = elements.scenarioYieldsTable;
+  if (!table) {
+    return;
+  }
+
+  const scenario = getSelectedScenario();
+  if (!scenario || !Number.isFinite(scenario.startYear) || !Number.isFinite(scenario.endYear)) {
+    table.querySelector("thead").innerHTML = "";
+    table.querySelector("tbody").innerHTML = "";
+    if (elements.scenarioYieldsStatus) {
+      elements.scenarioYieldsStatus.textContent = "Bitte gültiges Szenario (Start/Endjahr) wählen.";
+    }
+    return;
+  }
+
+  const years = [];
+  for (let year = scenario.startYear; year <= scenario.endYear; year += 1) {
+    years.push(year);
+  }
+
+  const thead = table.querySelector("thead");
+  const tbody = table.querySelector("tbody");
+
+  thead.innerHTML = `
+    <tr>
+      <th>Jahr</th>
+      ${MAIN_YIELD_FIELDS.map((field) => `<th>${field}</th>`).join("")}
+    </tr>
+  `;
+
+  tbody.innerHTML = "";
+
+  years.forEach((year) => {
+    const tr = document.createElement("tr");
+    tr.dataset.year = String(year);
+
+    const cells = MAIN_YIELD_FIELDS.map((field) => {
+      const stored = getScenarioYieldValue(state.tables, scenario.id, year, field);
+      const value = stored ?? guessDefaultScenarioYields(field);
+      return `
+        <td>
+          <input class="input" type="number" step="0.0001" data-field="${field}" value="${value}">
+        </td>
+      `;
+    }).join("");
+
+    tr.innerHTML = `<td><strong>${year}</strong></td>${cells}`;
+    tbody.appendChild(tr);
+  });
+
+  if (elements.scenarioYieldsStatus) {
+    elements.scenarioYieldsStatus.textContent = `Bearbeite ${years.length} Jahre. Speichern übernimmt die Werte für dieses Szenario.`;
+  }
+}
+
+function saveScenarioYieldsEditorChanges() {
+  const scenario = getSelectedScenario();
+  if (!scenario) {
+    return;
+  }
+
+  const table = elements.scenarioYieldsTable;
+  if (!table) {
+    return;
+  }
+
+  const tables = getWorkingTables();
+  const rows = Array.from(table.querySelectorAll("tbody tr"));
+  rows.forEach((tr) => {
+    const year = Number(tr.dataset.year);
+    MAIN_YIELD_FIELDS.forEach((field) => {
+      const raw = tr.querySelector(`[data-field="${field}"]`)?.value ?? "";
+      const value = parseNumber(raw);
+      setScenarioYieldValue(tables, scenario.id, year, field, value);
+    });
+  });
+
+  applyTables({ tables, note: `Hauptyields gespeichert (${scenario.id})` });
+}
+
+function resetScenarioYieldsEditor() {
+  renderScenarioYieldsEditor();
+  if (elements.scenarioYieldsStatus) {
+    elements.scenarioYieldsStatus.textContent = "Änderungen verworfen.";
+  }
+}
+
 function renderTypesEditor() {
   const table = elements.typesEditorTable;
   if (!table || !state.model) {
@@ -1309,7 +1452,14 @@ function renderTypesEditor() {
     const plantId = row.plant_id || "";
     const families = getFamiliesForPlant(plantId);
     const techOptions = getTechOptionsForPlant(plantId);
-    const mappedTech = getMappedTechId(ttnr);
+    let mappedTech = getMappedTechId(ttnr);
+    if (!mappedTech && techOptions.length > 0) {
+      mappedTech = techOptions[0].id;
+    }
+    let familyId = (row.family_id ?? "").trim();
+    if (!familyId && families.length > 0) {
+      familyId = families[0].id;
+    }
 
     const tr = document.createElement("tr");
     tr.dataset.ttnr = ttnr;
@@ -1317,7 +1467,7 @@ function renderTypesEditor() {
     const familyOptionsHtml = families
       .map(
         (family) =>
-          `<option value="${family.id}" ${String(row.family_id) === String(family.id) ? "selected" : ""}>${family.id}</option>`
+          `<option value="${family.id}" ${String(familyId) === String(family.id) ? "selected" : ""}>${family.id}</option>`
       )
       .join("");
 
@@ -2442,6 +2592,7 @@ function applyTables({ tables, note }) {
   renderDataOverview();
   renderInputLists();
   renderTypesEditor();
+  renderScenarioYieldsEditor();
   const firstTableName = Object.keys(tables)[0];
   if (firstTableName) {
     renderTablePreview(firstTableName, tables[firstTableName] || []);
@@ -2590,6 +2741,8 @@ function initEvents() {
   elements.addMappingButton?.addEventListener("click", addMapping);
   elements.typesSaveButton?.addEventListener("click", saveTypesEditorChanges);
   elements.typesResetButton?.addEventListener("click", resetTypesEditor);
+  elements.scenarioYieldsSave?.addEventListener("click", saveScenarioYieldsEditorChanges);
+  elements.scenarioYieldsReset?.addEventListener("click", resetScenarioYieldsEditor);
   elements.reloadBaseDataButton?.addEventListener("click", async () => {
     setImportStatus({ status: "status-ok", message: "Lade base_data.json…", details: "" });
     try {
@@ -2616,13 +2769,20 @@ function initEvents() {
 
   elements.scenarioSelect.addEventListener("change", () => {
     updateScenarioUi();
+    renderScenarioYieldsEditor();
     validateAndCompute();
   });
 
   elements.modelSelect.addEventListener("change", validateAndCompute);
   elements.plantSelect.addEventListener("change", validateAndCompute);
-  elements.scenarioStart.addEventListener("change", validateAndCompute);
-  elements.scenarioEnd.addEventListener("change", validateAndCompute);
+  elements.scenarioStart.addEventListener("change", () => {
+    renderScenarioYieldsEditor();
+    validateAndCompute();
+  });
+  elements.scenarioEnd.addEventListener("change", () => {
+    renderScenarioYieldsEditor();
+    validateAndCompute();
+  });
   elements.runCalc.addEventListener("click", validateAndCompute);
 
   elements.filterSearch.addEventListener("input", (event) => {
