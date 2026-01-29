@@ -382,6 +382,22 @@ function normalizeTtnr(value) {
   return trimmed || DEFAULT_TTNR;
 }
 
+function normalizeMappingValue(value) {
+  const trimmed = String(value ?? "").trim();
+  if (!trimmed || trimmed.toLowerCase() === "null") {
+    return "";
+  }
+  return trimmed;
+}
+
+function normalizeMappingTtnr(value) {
+  const trimmed = normalizeMappingValue(value);
+  if (!trimmed || trimmed === DEFAULT_TTNR) {
+    return "";
+  }
+  return trimmed;
+}
+
 function normalizeChipTypesInTables(tables) {
   const next = structuredClone(tables || DEFAULT_TABLES);
   next.chip_types = (next.chip_types || []).map((row) => ({
@@ -961,8 +977,8 @@ function buildDataModel(tables) {
   });
 
   (tables.chip_type_tech || []).forEach((row) => {
-    const ttnr = row.ttnr;
-    const techId = row.tech_id || row.technology_id || row.id;
+    const ttnr = normalizeMappingTtnr(row.ttnr);
+    const techId = normalizeMappingValue(row.tech_id || row.technology_id || row.id);
     if (!ttnr || !techId) {
       return;
     }
@@ -1365,11 +1381,16 @@ function getMappedTechId(ttnr) {
 function setMappedTechId(ttnr, techId) {
   const tables = getWorkingTables();
   tables.chip_type_tech = tables.chip_type_tech || [];
-  tables.chip_type_tech = tables.chip_type_tech.filter((entry) => entry.ttnr !== ttnr);
-  if (techId) {
-    tables.chip_type_tech.push({ ttnr, tech_id: techId });
+  const cleanedTtnr = normalizeMappingTtnr(ttnr);
+  const cleanedTechId = normalizeMappingValue(techId);
+  tables.chip_type_tech = tables.chip_type_tech.filter((entry) => entry.ttnr !== cleanedTtnr);
+  if (cleanedTtnr && cleanedTechId) {
+    tables.chip_type_tech.push({ ttnr: cleanedTtnr, tech_id: cleanedTechId });
   }
-  applyTables({ tables, note: `Tech-Mapping aktualisiert: ${ttnr} → ${techId || "∅"}` });
+  applyTables({
+    tables,
+    note: `Tech-Mapping aktualisiert: ${cleanedTtnr || ttnr} → ${cleanedTechId || "∅"}`
+  });
 }
 
 function getScenarioYieldValue(tables, scenarioId, year, field) {
@@ -1753,9 +1774,11 @@ function saveTypesEditorChanges() {
   nextMappings = nextMappings.filter((row) => !allTtnr.has(row.ttnr));
 
   rows.forEach((tr) => {
-    const ttnr = normalizeTtnr(tr.dataset.ttnr || tr.querySelector("[data-field=\"name\"]")?.value);
-    const techId = tr.querySelector(`[data-field="tech_id"]`)?.value ?? "";
-    if (techId) {
+    const ttnr = normalizeMappingTtnr(
+      tr.dataset.ttnr || tr.querySelector("[data-field=\"name\"]")?.value
+    );
+    const techId = normalizeMappingValue(tr.querySelector(`[data-field="tech_id"]`)?.value);
+    if (ttnr && techId) {
       nextMappings.push({ ttnr, tech_id: techId });
     }
   });
@@ -2172,8 +2195,8 @@ function addMapping() {
   if (!elements.mapTypeSelect || !elements.mapTechSelect) {
     return;
   }
-  const ttnr = elements.mapTypeSelect.value;
-  const techId = elements.mapTechSelect.value;
+  const ttnr = normalizeMappingTtnr(elements.mapTypeSelect.value);
+  const techId = normalizeMappingValue(elements.mapTechSelect.value);
   if (!ttnr || !techId) {
     return;
   }
