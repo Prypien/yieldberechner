@@ -1598,10 +1598,7 @@ function renderTypesEditor() {
     const plantId = row.plant_id || defaultPlantId;
     const families = getFamiliesForPlant(plantId);
     const techOptions = getTechOptionsForPlant(plantId);
-    let mappedTech = getMappedTechId(ttnr);
-    if (!mappedTech && techOptions.length > 0) {
-      mappedTech = techOptions[0].id;
-    }
+    const mappedTech = getMappedTechId(ttnr);
     let familyId = (row.family_id ?? "").trim();
     if (!familyId && families.length > 0) {
       familyId = families[0].id;
