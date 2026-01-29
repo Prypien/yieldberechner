@@ -237,10 +237,20 @@ function loadInputSummary() {
   return null;
 }
 
-function loadInputTables() {
+async function loadInputTables() {
   const stored = localStorage.getItem(INPUT_DATA_KEY);
   if (!stored) {
-    return structuredClone(DEFAULT_TABLES);
+    try {
+      const response = await fetch("base_data.json", { cache: "no-store" });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      const parsed = await response.json();
+      return { ...structuredClone(DEFAULT_TABLES), ...parsed };
+    } catch (error) {
+      console.warn("Failed to load base_data.json", error);
+      return structuredClone(DEFAULT_TABLES);
+    }
   }
   try {
     const parsed = JSON.parse(stored);
@@ -754,25 +764,43 @@ function buildDataModel(tables) {
   });
 
   (tables.chip_types || []).forEach((row) => {
-    const plant = model.plants.get(row.plant_id);
-    if (!plant) {
-      errors.push(`chip_type ${row.ttnr} referenziert unbekanntes plant_id ${row.plant_id}`);
-      return;
-    }
-    const family = plant.families.get(row.family_id);
-    if (!family) {
-      errors.push(`chip_type ${row.ttnr} referenziert unbekannte family_id ${row.family_id}`);
-      return;
-    }
-    plant.chipTypes.push({
+    const familyId = row.family_id;
+    const chipBase = {
       ttnr: row.ttnr,
       name: row.name || row.description || "",
-      familyId: row.family_id,
-      plantId: row.plant_id,
+      familyId,
       dieArea: parseNumber(row.die_area_mm2) ?? 0,
       package: row.package || "",
       specialStartYear: parseNumber(row.special_start_year) ?? 0
+    };
+
+    if (row.plant_id) {
+      const plant = model.plants.get(row.plant_id);
+      if (!plant) {
+        errors.push(`chip_type ${row.ttnr} referenziert unbekanntes plant_id ${row.plant_id}`);
+        return;
+      }
+      const family = plant.families.get(familyId);
+      if (!family) {
+        errors.push(`chip_type ${row.ttnr} referenziert unbekannte family_id ${familyId}`);
+        return;
+      }
+      plant.chipTypes.push({ ...chipBase, plantId: row.plant_id });
+      return;
+    }
+
+    let matched = false;
+    model.plants.forEach((plant) => {
+      const family = plant.families.get(familyId);
+      if (!family) {
+        return;
+      }
+      matched = true;
+      plant.chipTypes.push({ ...chipBase, plantId: plant.id });
     });
+    if (!matched) {
+      errors.push(`chip_type ${row.ttnr || row.name} referenziert unbekannte family_id ${familyId}`);
+    }
   });
 
   (tables.chip_type_tech || []).forEach((row) => {
@@ -2274,7 +2302,7 @@ function initEvents() {
   });
 }
 
-function init() {
+async function init() {
   loadUiSettings();
   const summary = loadInputSummary();
   updateInputSummary(summary);
@@ -2285,7 +2313,8 @@ function init() {
   elements.filterYear.value = state.ui.filters.year;
   initEvents();
   setImportStatus({ status: "status-ok", message: "Bereit – Eingaben werden geladen.", details: "" });
-  applyTables({ tables: loadInputTables(), note: "Eingaben geladen" });
+  const tables = await loadInputTables();
+  applyTables({ tables, note: "Eingaben geladen" });
 }
 
 init();
