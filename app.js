@@ -33,7 +33,8 @@ const requiredTables = [
   "scenario_year_yields"
 ];
 
-const yieldFields = ["EPI", "FAB", "VM", "SAW", "KGD", "OSAT", "EPI_SHIP"];
+const DEFAULT_TTNR = "0000000000";
+const yieldFields = ["EPI", "FAB", "VM", "SAW", "KGD", "OSAT"];
 const MAIN_YIELD_FIELDS = ["FAB", "EPI", "SAW", "KGD", "OSAT"];
 
 const FAB_MODEL_REGISTRY = {
@@ -295,7 +296,10 @@ function mergeBaseIntoTables(current, base) {
   const baseTypes = base.chip_types || [];
   const makeTypeKey = (row) => {
     const trimmed = String(row.ttnr ?? "").trim();
-    return trimmed || `NAME:${String(row.name ?? "").trim()}`;
+    if (trimmed && trimmed !== DEFAULT_TTNR) {
+      return trimmed;
+    }
+    return `NAME:${String(row.name ?? "").trim()}`;
   };
   const typeMap = new Map(curTypes.map((row) => [makeTypeKey(row), { ...row }]));
   baseTypes.forEach((baseRow) => {
@@ -370,6 +374,55 @@ function saveInputTables(tables) {
 
 function getWorkingTables() {
   return structuredClone(state.tables || DEFAULT_TABLES);
+}
+
+function normalizeTtnr(value) {
+  const trimmed = String(value ?? "").trim();
+  return trimmed || DEFAULT_TTNR;
+}
+
+function normalizeChipTypesInTables(tables) {
+  const next = structuredClone(tables || DEFAULT_TABLES);
+  next.chip_types = (next.chip_types || []).map((row) => ({
+    ...row,
+    ttnr: normalizeTtnr(row.ttnr)
+  }));
+  next.chip_type_tech = (next.chip_type_tech || []).map((row) => ({
+    ...row,
+    ttnr: normalizeTtnr(row.ttnr)
+  }));
+  return next;
+}
+
+function getChipTypeRowKey(row, index) {
+  const ttnr = normalizeTtnr(row.ttnr);
+  const name = String(row.name ?? "").trim();
+  if (ttnr && ttnr !== DEFAULT_TTNR) {
+    return `TTNR:${ttnr}`;
+  }
+  if (name) {
+    return `NAME:${name}`;
+  }
+  return `INDEX:${index}`;
+}
+
+function isPackageChecked(value) {
+  if (value === true || value === 1) {
+    return true;
+  }
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    return ["1", "true", "ja", "yes", "x"].includes(normalized);
+  }
+  return false;
+}
+
+function normalizeTechFactor(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) {
+    return 1;
+  }
+  return number;
 }
 
 function clamp01(value) {
@@ -850,7 +903,7 @@ function buildDataModel(tables) {
       scenarioId: row.scenario_id || row.scenarioId || "",
       name: row.name || techId,
       targetField: row.target_field || row.targetField || "FAB",
-      staticExtraPct: parseNumber(row.static_extra_pct ?? row.staticExtraPct) ?? 0,
+      staticExtraPct: parseNumber(row.static_extra_pct ?? row.staticExtraPct) ?? 1,
       isDynamic: Boolean(parseNumber(row.is_dynamic ?? row.isDynamic)),
       description: row.description || ""
     });
@@ -863,7 +916,7 @@ function buildDataModel(tables) {
       return;
     }
     const techOverrides = ensureTechnologyOverrides(model, techId);
-    techOverrides.set(Number(year), parseNumber(row.extra_pct ?? row.extraPct) ?? 0);
+    techOverrides.set(Number(year), parseNumber(row.extra_pct ?? row.extraPct) ?? 1);
   });
 
   (tables.chip_types || []).forEach((row) => {
@@ -1043,21 +1096,18 @@ function buildFabBreakdown(modelKey, D_year, A_cm2, params) {
   };
 }
 
-function getDynamicExtraPct(model, technology, year) {
+function getTechnologyFactor(model, technology, year) {
   if (!technology.isDynamic) {
-    return technology.staticExtraPct || 0;
+    return normalizeTechFactor(technology.staticExtraPct);
   }
   const overrides = model.technologyYears.get(technology.id);
   if (!overrides || overrides.size === 0) {
-    return technology.staticExtraPct || 0;
+    return 1;
   }
-  const candidates = Array.from(overrides.keys())
-    .filter((y) => y <= year)
-    .sort((a, b) => b - a);
-  if (candidates.length === 0) {
-    return technology.staticExtraPct || 0;
+  if (!overrides.has(year)) {
+    return 1;
   }
-  return overrides.get(candidates[0]) ?? technology.staticExtraPct ?? 0;
+  return normalizeTechFactor(overrides.get(year));
 }
 
 function computeResults({ scenario, plantsData, yieldModels, chipTypeTech, model }) {
@@ -1108,16 +1158,16 @@ function computeResults({ scenario, plantsData, yieldModels, chipTypeTech, model
           if (scenarioId && scenarioId !== scenario.id) {
             return null;
           }
-          const extraPct = getDynamicExtraPct(model, technology, year);
-          return { ...technology, extraPct };
+          const factor = getTechnologyFactor(model, technology, year);
+          return { ...technology, factor };
         }).filter(Boolean);
 
         techDetails.forEach((tech) => {
-          if (!baseYields[tech.targetField]) {
+          if (baseYields[tech.targetField] === undefined || baseYields[tech.targetField] === null) {
             return;
           }
           baseYields[tech.targetField] = clamp01(
-            baseYields[tech.targetField] * (1 + (tech.extraPct || 0) / 100)
+            baseYields[tech.targetField] * normalizeTechFactor(tech.factor)
           );
         });
 
@@ -1521,8 +1571,8 @@ function renderTypesEditor() {
 
   tbody.innerHTML = "";
 
-  chipTypes.forEach((row) => {
-    const ttnr = row.ttnr;
+  chipTypes.forEach((row, index) => {
+    const ttnr = normalizeTtnr(row.ttnr);
     const plantId = row.plant_id || defaultPlantId;
     const families = getFamiliesForPlant(plantId);
     const techOptions = getTechOptionsForPlant(plantId);
@@ -1536,6 +1586,7 @@ function renderTypesEditor() {
     }
 
     const tr = document.createElement("tr");
+    tr.dataset.rowKey = getChipTypeRowKey(row, index);
     tr.dataset.ttnr = ttnr;
 
     const plantOptionsHtml = plants
@@ -1574,7 +1625,12 @@ function renderTypesEditor() {
         </select>
       </td>
       <td><input class="input" type="number" step="0.01" data-field="die_area_mm2" value="${row.die_area_mm2 ?? ""}"></td>
-      <td><input class="input" data-field="package" value="${row.package ?? ""}"></td>
+      <td>
+        <label class="checkbox-label">
+          <input type="checkbox" data-field="package" ${isPackageChecked(row.package) ? "checked" : ""} />
+          Package
+        </label>
+      </td>
       <td>
         <label class="checkbox-label">
           <input type="checkbox" data-field="special_start_year_enabled" ${Number.isFinite(parseNumber(row.special_start_year)) ? "checked" : ""} />
@@ -1669,13 +1725,15 @@ function saveTypesEditorChanges() {
   const tables = getWorkingTables();
   const chipTypes = tables.chip_types || [];
   const rows = Array.from(table.querySelectorAll("tbody tr"));
+  const rowMap = new Map(rows.map((row) => [row.dataset.rowKey, row]));
 
-  const nextChipTypes = chipTypes.map((original) => {
-    const tr = rows.find((row) => row.dataset.ttnr === original.ttnr);
+  const nextChipTypes = chipTypes.map((original, index) => {
+    const tr = rowMap.get(getChipTypeRowKey(original, index));
     if (!tr) {
       return original;
     }
     const getVal = (field) => tr.querySelector(`[data-field="${field}"]`)?.value ?? "";
+    const packageChecked = Boolean(tr.querySelector("[data-field=\"package\"]")?.checked);
     const specialEnabled = Boolean(tr.querySelector("[data-field=\"special_start_year_enabled\"]")?.checked);
     const specialYear = specialEnabled ? parseNumber(getVal("special_start_year")) : null;
     return {
@@ -1684,7 +1742,7 @@ function saveTypesEditorChanges() {
       plant_id: getVal("plant_id").trim(),
       family_id: getVal("family_id").trim(),
       die_area_mm2: parseNumber(getVal("die_area_mm2")),
-      package: getVal("package").trim(),
+      package: packageChecked ? 1 : 0,
       special_start_year: specialYear
     };
   });
@@ -1694,7 +1752,7 @@ function saveTypesEditorChanges() {
   nextMappings = nextMappings.filter((row) => !allTtnr.has(row.ttnr));
 
   rows.forEach((tr) => {
-    const ttnr = tr.dataset.ttnr;
+    const ttnr = normalizeTtnr(tr.dataset.ttnr || tr.querySelector("[data-field=\"name\"]")?.value);
     const techId = tr.querySelector(`[data-field="tech_id"]`)?.value ?? "";
     if (techId) {
       nextMappings.push({ ttnr, tech_id: techId });
@@ -1893,7 +1951,7 @@ function renderInputLists() {
       { key: "plant_id", label: "Werk" },
       { key: "scenario_id", label: "Szenario", format: (_, row) => row.scenario_id || "Global" },
       { key: "target_field", label: "Field" },
-      { key: "static_extra_pct", label: "Extra %" },
+      { key: "static_extra_pct", label: "Faktor", format: (value) => formatDecimal(value, 4) },
       { key: "is_dynamic", label: "Dynamisch", format: (value) => (Number(value) ? "Ja" : "Nein") }
     ],
     tables.technologies || [],
@@ -1959,8 +2017,7 @@ function addPlant() {
     VM: parseNumber(elements.plantYieldVm.value),
     SAW: parseNumber(elements.plantYieldSaw.value),
     KGD: parseNumber(elements.plantYieldKgd.value),
-    OSAT: parseNumber(elements.plantYieldOsat.value),
-    EPI_SHIP: parseNumber(elements.plantYieldEpiShip.value)
+    OSAT: parseNumber(elements.plantYieldOsat.value)
   };
   tables.plant_base_yields = tables.plant_base_yields.filter((row) => row.plant_id !== id);
   Object.entries(yieldValues).forEach(([field, value]) => {
@@ -1979,7 +2036,6 @@ function addPlant() {
   elements.plantYieldSaw.value = "";
   elements.plantYieldKgd.value = "";
   elements.plantYieldOsat.value = "";
-  elements.plantYieldEpiShip.value = "";
 }
 
 function hydrateFamilyEditorFromSelection() {
@@ -2093,7 +2149,7 @@ function addTechnology() {
     scenario_id: scenarioId,
     name: elements.techNameInput.value.trim() || techId,
     target_field: elements.techTargetSelect.value,
-    static_extra_pct: parseNumber(elements.techStaticInput.value) ?? 0,
+    static_extra_pct: parseNumber(elements.techStaticInput.value) ?? 1,
     is_dynamic: elements.techDynamicInput.checked ? 1 : 0
   };
   const index = tables.technologies.findIndex(
@@ -2410,7 +2466,7 @@ function renderTechnologySettings() {
         ([year, extra]) => `
         <div class="tech-year-row">
           <input class="input" type="number" data-field="year" data-year="${year}" value="${year}" />
-          <input class="input" type="number" step="0.01" data-field="extra" data-year="${year}" value="${extra}" />
+          <input class="input" type="number" step="0.0001" data-field="extra" data-year="${year}" value="${extra}" />
           <button class="btn btn-secondary" type="button" data-action="remove-year" data-year="${year}">Entfernen</button>
         </div>
       `
@@ -2437,8 +2493,8 @@ function renderTechnologySettings() {
           </select>
         </div>
         <div class="field">
-          <label class="label">Extra % (statisch)</label>
-          <input class="input" type="number" step="0.01" data-field="staticExtraPct" value="${tech.staticExtraPct ?? 0}" />
+          <label class="label">Faktor (statisch)</label>
+          <input class="input" type="number" step="0.0001" data-field="staticExtraPct" value="${tech.staticExtraPct ?? 1}" />
         </div>
         <div class="field checkbox-field">
           <label class="label">Dynamisch</label>
@@ -2450,7 +2506,7 @@ function renderTechnologySettings() {
       </div>
       <div class="tech-years">
         <div class="tech-years-header">
-          <div class="label">Jahres-Overrides</div>
+          <div class="label">Jahres-Overrides (Faktor)</div>
           <button class="btn btn-secondary" type="button" data-action="add-year">Jahr hinzufügen</button>
         </div>
         <div class="tech-year-list">
@@ -2473,7 +2529,7 @@ function renderTechnologySettings() {
     });
 
     staticInput?.addEventListener("change", (event) => {
-      updateTechnologyInTables(tech, { static_extra_pct: parseNumber(event.target.value) ?? 0 });
+      updateTechnologyInTables(tech, { static_extra_pct: parseNumber(event.target.value) ?? 1 });
     });
 
     dynamicToggle?.addEventListener("change", (event) => {
@@ -2518,7 +2574,7 @@ function renderTechnologySettings() {
         new Date().getFullYear();
       const nextYear = years.length ? Math.max(...years) + 1 : baseYear;
       if (!overrides.has(nextYear)) {
-        overrides.set(nextYear, tech.staticExtraPct ?? 0);
+        overrides.set(nextYear, tech.staticExtraPct ?? 1);
       }
       updateTechnologyOverridesInTables(tech.id, overrides);
     });
@@ -2631,7 +2687,6 @@ function renderResults() {
       <td>${formatPct(row.yields.SAW)}</td>
       <td>${formatPct(row.yields.KGD)}</td>
       <td>${formatPct(row.yields.OSAT)}</td>
-      <td>${formatPct(row.yields.EPI_SHIP)}</td>
       <td><strong>${formatPct(row.total)}</strong></td>
     `;
     tr.addEventListener("click", () => openDetails(row));
@@ -2726,7 +2781,7 @@ function openDetails(row) {
     <h4>Technologien</h4>
     <div class="detail-grid">
       ${row.techDetails.length === 0 ? "<p class=\"muted\">Keine Technologien.</p>" : row.techDetails.map((tech) => `
-        <div class="detail-item"><strong>${tech.name}</strong><span>${tech.targetField} +${tech.extraPct}%</span></div>
+        <div class="detail-item"><strong>${tech.name}</strong><span>${tech.targetField} ×${formatDecimal(tech.factor, 4)}</span></div>
       `).join("")}
     </div>
     <h4>Total</h4>
@@ -2744,9 +2799,10 @@ function closeDetails() {
 }
 
 function applyTables({ tables, note }) {
-  state.tables = tables;
-  saveInputTables(tables);
-  const { model, errors, warnings } = buildDataModel(tables);
+  const normalizedTables = normalizeChipTypesInTables(tables);
+  state.tables = normalizedTables;
+  saveInputTables(normalizedTables);
+  const { model, errors, warnings } = buildDataModel(normalizedTables);
   state.model = model;
   state.validation = { errors, warnings };
   renderScenarioOptions();
@@ -2757,9 +2813,9 @@ function applyTables({ tables, note }) {
   renderInputLists();
   renderTypesEditor();
   renderScenarioYieldsEditor();
-  const firstTableName = Object.keys(tables)[0];
+  const firstTableName = Object.keys(normalizedTables)[0];
   if (firstTableName) {
-    renderTablePreview(firstTableName, tables[firstTableName] || []);
+    renderTablePreview(firstTableName, normalizedTables[firstTableName] || []);
   } else {
     elements.tablePreview.innerHTML = "<p class=\"muted\">Keine Tabellen gefunden.</p>";
   }

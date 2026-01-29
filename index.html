@@ -72,6 +72,43 @@
 
       <div class="card">
         <div class="card-header">
+          <h3>Family-Parameter</h3>
+          <p class="muted">D0, D_in, t0 und tEnd pro Family pflegen (wirkt auf alle Typen der Family).</p>
+          <div class="inline-actions">
+            <button id="save-family" class="btn">Family speichern</button>
+          </div>
+        </div>
+        <div class="form-grid">
+          <div class="field">
+            <label class="label" for="family-plant-select">Werk</label>
+            <select id="family-plant-select" class="input"></select>
+          </div>
+          <div class="field">
+            <label class="label" for="family-select">Family</label>
+            <select id="family-select" class="input"></select>
+          </div>
+          <div class="field">
+            <label class="label" for="family-density-start">D0</label>
+            <input id="family-density-start" class="input" type="number" step="0.0001" />
+          </div>
+          <div class="field">
+            <label class="label" for="family-density-end">D_in</label>
+            <input id="family-density-end" class="input" type="number" step="0.0001" />
+          </div>
+          <div class="field">
+            <label class="label" for="family-t0-input">t0</label>
+            <input id="family-t0-input" class="input" type="number" />
+          </div>
+          <div class="field">
+            <label class="label" for="family-tend-input">tEnd</label>
+            <input id="family-tend-input" class="input" type="number" />
+          </div>
+        </div>
+        <div class="table-scroll compact" id="family-list"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
           <h3>Typen ausfüllen (Base)</h3>
           <p class="muted">Bearbeite die vorhandenen Typen tabellarisch. Keine neuen Typen/Familien/Werke.</p>
           <div class="inline-actions">
@@ -163,7 +200,7 @@
       </div>
       <div class="settings-section">
         <h3>Technologien</h3>
-        <p class="muted">Yield-Targets und Prozentwerte werden hier gepflegt – szenariospezifisch und dynamisch editierbar.</p>
+        <p class="muted">Yield-Targets und Faktoren werden hier gepflegt – szenariospezifisch und dynamisch editierbar.</p>
         <div class="settings-grid" id="tech-settings"></div>
       </div>
     </section>
@@ -225,7 +262,6 @@
                 <th>SAW</th>
                 <th>KGD</th>
                 <th>OSAT</th>
-                <th>EPI_SHIP</th>
                 <th data-sort="total">TOTAL</th>
               </tr>
             </thead>
