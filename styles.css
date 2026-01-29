@@ -231,6 +231,35 @@ code {
   margin-top: 16px;
 }
 
+.quick-fill {
+  margin: 16px 0;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px dashed var(--border);
+  background: #f8f9ff;
+  display: grid;
+  gap: 12px;
+}
+
+.quick-fill-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.quick-fill-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 12px;
+}
+
+.quick-fill-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 .status-pill {
   display: inline-flex;
   align-items: center;
