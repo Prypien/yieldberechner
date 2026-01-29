@@ -39,7 +39,7 @@
     <section id="tab-setup" class="tab-panel active">
       <div class="panel-header">
         <h2>Setup</h2>
-        <p class="muted">Lege deine Szenarien, Familien, Typen und Technologien direkt im Tool an.</p>
+        <p class="muted">Lege Szenarien an und ergänze die vorhandenen Typen tabellarisch.</p>
       </div>
 
       <div class="panel-grid">
@@ -72,180 +72,26 @@
           </div>
           <div class="table-scroll compact" id="scenario-list"></div>
         </div>
-
-        <div class="card">
-          <h3>Werk &amp; Basis-Yields</h3>
-          <div class="form-grid">
-            <div class="field">
-              <label class="label" for="plant-id-input">Werk-ID</label>
-              <input id="plant-id-input" class="input" type="text" placeholder="P1" />
-            </div>
-            <div class="field">
-              <label class="label" for="plant-name-input">Werk-Name</label>
-              <input id="plant-name-input" class="input" type="text" placeholder="Werk A" />
-            </div>
-            <div class="field">
-              <label class="label" for="plant-yield-epi">EPI</label>
-              <input id="plant-yield-epi" class="input" type="number" step="0.01" placeholder="0.98" />
-            </div>
-            <div class="field">
-              <label class="label" for="plant-yield-vm">VM</label>
-              <input id="plant-yield-vm" class="input" type="number" step="0.01" placeholder="0.98" />
-            </div>
-            <div class="field">
-              <label class="label" for="plant-yield-saw">SAW</label>
-              <input id="plant-yield-saw" class="input" type="number" step="0.01" placeholder="0.98" />
-            </div>
-            <div class="field">
-              <label class="label" for="plant-yield-kgd">KGD</label>
-              <input id="plant-yield-kgd" class="input" type="number" step="0.01" placeholder="0.98" />
-            </div>
-            <div class="field">
-              <label class="label" for="plant-yield-osat">OSAT</label>
-              <input id="plant-yield-osat" class="input" type="number" step="0.01" placeholder="0.97" />
-            </div>
-            <div class="field">
-              <label class="label" for="plant-yield-epi-ship">EPI_SHIP</label>
-              <input id="plant-yield-epi-ship" class="input" type="number" step="0.01" placeholder="0.98" />
-            </div>
-          </div>
-          <div class="inline-actions">
-            <button id="add-plant" class="btn">Werk hinzufügen</button>
-          </div>
-          <div class="table-scroll compact" id="plant-list"></div>
-        </div>
       </div>
 
-      <div class="panel-grid">
-        <div class="card">
-          <h3>Family bearbeiten</h3>
-          <div class="form-grid">
-            <div class="field">
-              <label class="label" for="family-plant-select">Werk</label>
-              <select id="family-plant-select" class="input"></select>
-            </div>
-            <div class="field">
-              <label class="label" for="family-select">Family</label>
-              <select id="family-select" class="input"></select>
-            </div>
-            <div class="field">
-              <label class="label" for="family-density-start">Dichte Start (D0)</label>
-              <input id="family-density-start" class="input" type="number" step="0.01" />
-            </div>
-            <div class="field">
-              <label class="label" for="family-density-end">Dichte Ende (D_in)</label>
-              <input id="family-density-end" class="input" type="number" step="0.01" />
-            </div>
-            <div class="field">
-              <label class="label" for="family-t0-input">t0</label>
-              <input id="family-t0-input" class="input" type="number" />
-            </div>
-            <div class="field">
-              <label class="label" for="family-tend-input">tEnd</label>
-              <input id="family-tend-input" class="input" type="number" />
-            </div>
-          </div>
+      <div class="card">
+        <div class="card-header">
+          <h3>Typen ausfüllen (Base)</h3>
+          <p class="muted">Bearbeite die vorhandenen Typen tabellarisch. Keine neuen Typen/Familien/Werke.</p>
           <div class="inline-actions">
-            <button id="save-family" class="btn">Family speichern</button>
+            <button id="types-save" class="btn">Änderungen speichern</button>
+            <button id="types-reset" class="btn btn-secondary">Änderungen verwerfen</button>
           </div>
-          <div class="table-scroll compact" id="family-list"></div>
         </div>
 
-        <div class="card">
-          <h3>Typ anlegen</h3>
-          <div class="form-grid">
-            <div class="field">
-              <label class="label" for="type-plant-select">Werk</label>
-              <select id="type-plant-select" class="input"></select>
-            </div>
-            <div class="field">
-              <label class="label" for="type-family-select">Family</label>
-              <select id="type-family-select" class="input"></select>
-            </div>
-            <div class="field">
-              <label class="label" for="type-ttnr-input">TTNR</label>
-              <input id="type-ttnr-input" class="input" type="text" placeholder="CPU-001" />
-            </div>
-            <div class="field">
-              <label class="label" for="type-name-input">Name</label>
-              <input id="type-name-input" class="input" type="text" placeholder="CPU Package" />
-            </div>
-            <div class="field">
-              <label class="label" for="type-area-input">Fläche (mm²)</label>
-              <input id="type-area-input" class="input" type="number" step="0.1" />
-            </div>
-            <div class="field">
-              <label class="label" for="type-package-input">Package</label>
-              <input id="type-package-input" class="input" type="text" placeholder="BGA" />
-            </div>
-            <div class="field">
-              <label class="label" for="type-start-year-input">Spezial-Startjahr</label>
-              <input id="type-start-year-input" class="input" type="number" />
-            </div>
-          </div>
-          <div class="inline-actions">
-            <button id="add-type" class="btn">Typ hinzufügen</button>
-          </div>
-          <div class="table-scroll compact" id="type-list"></div>
-        </div>
-      </div>
-
-      <div class="panel-grid">
-        <div class="card">
-          <h3>Technologie anlegen</h3>
-          <div class="form-grid">
-            <div class="field">
-              <label class="label" for="tech-scenario-select">Szenario</label>
-              <select id="tech-scenario-select" class="input"></select>
-            </div>
-            <div class="field">
-              <label class="label" for="tech-plant-select">Werk</label>
-              <select id="tech-plant-select" class="input"></select>
-            </div>
-            <div class="field">
-              <label class="label" for="tech-id-input">Tech-ID</label>
-              <input id="tech-id-input" class="input" type="text" placeholder="TECH_X" />
-            </div>
-            <div class="field">
-              <label class="label" for="tech-name-input">Name</label>
-              <input id="tech-name-input" class="input" type="text" placeholder="Copper" />
-            </div>
-            <div class="field">
-              <label class="label" for="tech-target-select">Yield-Feld</label>
-              <select id="tech-target-select" class="input"></select>
-            </div>
-            <div class="field">
-              <label class="label" for="tech-static-input">Statisch +/-%</label>
-              <input id="tech-static-input" class="input" type="number" step="0.1" />
-            </div>
-            <div class="field">
-              <label class="label" for="tech-dynamic-input">Dynamisch?</label>
-              <input id="tech-dynamic-input" class="input" type="checkbox" />
-            </div>
-          </div>
-          <div class="inline-actions">
-            <button id="add-tech" class="btn">Technologie hinzufügen</button>
-          </div>
-          <div class="table-scroll compact" id="tech-list"></div>
+        <div class="table-scroll">
+          <table class="table" id="types-editor-table">
+            <thead></thead>
+            <tbody></tbody>
+          </table>
         </div>
 
-        <div class="card">
-          <h3>Typ &amp; Technologie verknüpfen</h3>
-          <div class="form-grid">
-            <div class="field">
-              <label class="label" for="map-type-select">Typ (TTNR)</label>
-              <select id="map-type-select" class="input"></select>
-            </div>
-            <div class="field">
-              <label class="label" for="map-tech-select">Technologie</label>
-              <select id="map-tech-select" class="input"></select>
-            </div>
-          </div>
-          <div class="inline-actions">
-            <button id="add-mapping" class="btn">Zuordnung hinzufügen</button>
-          </div>
-          <div class="table-scroll compact" id="mapping-list"></div>
-        </div>
+        <div class="muted" id="types-editor-status"></div>
       </div>
 
       <div class="card">
