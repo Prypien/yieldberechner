@@ -141,7 +141,6 @@ const elements = {
   importDetails: document.getElementById("import-details"),
   importSummary: document.getElementById("import-summary"),
   reloadBaseDataButton: document.getElementById("reload-base-data"),
-  scenarioIdInput: document.getElementById("scenario-id-input"),
   scenarioNameInput: document.getElementById("scenario-name-input"),
   scenarioStartInput: document.getElementById("scenario-start-input"),
   scenarioEndInput: document.getElementById("scenario-end-input"),
@@ -199,6 +198,7 @@ const elements = {
   modelSelect: document.getElementById("model-select"),
   plantSelect: document.getElementById("plant-select"),
   scenarioYieldsTable: document.getElementById("scenario-yields-table"),
+  scenarioYieldsQuickFill: document.getElementById("scenario-yields-quick-fill"),
   scenarioYieldsSave: document.getElementById("scenario-yields-save"),
   scenarioYieldsReset: document.getElementById("scenario-yields-reset"),
   scenarioYieldsStatus: document.getElementById("scenario-yields-status"),
@@ -1280,6 +1280,32 @@ function getFamiliesForPlant(plantId) {
   return Array.from(plant.families.values()).map((family) => ({ id: family.id, name: family.name || family.id }));
 }
 
+function getPlantLabel(plantId) {
+  if (!state.model || !plantId) {
+    return plantId || "";
+  }
+  const plant = state.model.plants.get(plantId);
+  if (!plant) {
+    return plantId;
+  }
+  return plant.name ? `${plant.name} (${plant.id})` : plant.id;
+}
+
+function getFamilyLabel(plantId, familyId) {
+  if (!state.model || !familyId) {
+    return familyId || "";
+  }
+  const plant = state.model.plants.get(plantId);
+  if (!plant) {
+    return familyId;
+  }
+  const family = plant.families.get(familyId);
+  if (!family) {
+    return familyId;
+  }
+  return family.name ? `${family.name} (${family.id})` : family.id;
+}
+
 function getMappedTechId(ttnr) {
   const row = (state.tables.chip_type_tech || []).find((entry) => entry.ttnr === ttnr);
   return row ? row.tech_id || row.id : "";
@@ -1345,6 +1371,9 @@ function renderScenarioYieldsEditor() {
   if (!scenario || !Number.isFinite(scenario.startYear) || !Number.isFinite(scenario.endYear)) {
     table.querySelector("thead").innerHTML = "";
     table.querySelector("tbody").innerHTML = "";
+    if (elements.scenarioYieldsQuickFill) {
+      elements.scenarioYieldsQuickFill.innerHTML = "";
+    }
     if (elements.scenarioYieldsStatus) {
       elements.scenarioYieldsStatus.textContent = "Bitte gültiges Szenario (Start/Endjahr) wählen.";
     }
@@ -1358,6 +1387,49 @@ function renderScenarioYieldsEditor() {
 
   const thead = table.querySelector("thead");
   const tbody = table.querySelector("tbody");
+
+  if (elements.scenarioYieldsQuickFill) {
+    elements.scenarioYieldsQuickFill.innerHTML = `
+      <div class="quick-fill-label">Schnellbefüllung</div>
+      <div class="quick-fill-fields">
+        ${MAIN_YIELD_FIELDS.map(
+          (field) => `
+          <div class="field">
+            <label class="label">${field}</label>
+            <input class="input" type="number" step="0.0001" data-field="${field}" placeholder="–">
+          </div>
+        `
+        ).join("")}
+      </div>
+      <div class="quick-fill-actions">
+        <button class="btn btn-secondary" type="button" data-action="apply-quick-fill">Auf alle Jahre anwenden</button>
+        <span class="muted">Leere Felder werden ignoriert.</span>
+      </div>
+    `;
+    elements.scenarioYieldsQuickFill
+      .querySelector("[data-action=\"apply-quick-fill\"]")
+      ?.addEventListener("click", () => {
+        const quickInputs = Array.from(
+          elements.scenarioYieldsQuickFill.querySelectorAll("input[data-field]")
+        );
+        const tableRows = Array.from(table.querySelectorAll("tbody tr"));
+        quickInputs.forEach((input) => {
+          if (!input.value) {
+            return;
+          }
+          const field = input.dataset.field;
+          tableRows.forEach((row) => {
+            const cellInput = row.querySelector(`input[data-field="${field}"]`);
+            if (cellInput) {
+              cellInput.value = input.value;
+            }
+          });
+        });
+        if (elements.scenarioYieldsStatus) {
+          elements.scenarioYieldsStatus.textContent = "Schnellbefüllung angewendet (bitte speichern).";
+        }
+      });
+  }
 
   thead.innerHTML = `
     <tr>
@@ -1429,6 +1501,8 @@ function renderTypesEditor() {
     return;
   }
   const chipTypes = state.tables.chip_types || [];
+  const plants = Array.from(state.model.plants.values());
+  const defaultPlantId = plants[0]?.id || "";
   const thead = table.querySelector("thead");
   const tbody = table.querySelector("tbody");
 
@@ -1440,7 +1514,7 @@ function renderTypesEditor() {
       <th>Family</th>
       <th>Die Area (mm²)</th>
       <th>Package</th>
-      <th>Start Year</th>
+      <th>Separates Startjahr</th>
       <th>Tech</th>
     </tr>
   `;
@@ -1449,7 +1523,7 @@ function renderTypesEditor() {
 
   chipTypes.forEach((row) => {
     const ttnr = row.ttnr;
-    const plantId = row.plant_id || "";
+    const plantId = row.plant_id || defaultPlantId;
     const families = getFamiliesForPlant(plantId);
     const techOptions = getTechOptionsForPlant(plantId);
     let mappedTech = getMappedTechId(ttnr);
@@ -1464,10 +1538,17 @@ function renderTypesEditor() {
     const tr = document.createElement("tr");
     tr.dataset.ttnr = ttnr;
 
+    const plantOptionsHtml = plants
+      .map(
+        (plant) =>
+          `<option value="${plant.id}" ${String(plantId) === String(plant.id) ? "selected" : ""}>${getPlantLabel(plant.id)}</option>`
+      )
+      .join("");
+
     const familyOptionsHtml = families
       .map(
         (family) =>
-          `<option value="${family.id}" ${String(familyId) === String(family.id) ? "selected" : ""}>${family.id}</option>`
+          `<option value="${family.id}" ${String(familyId) === String(family.id) ? "selected" : ""}>${family.name || family.id}</option>`
       )
       .join("");
 
@@ -1482,7 +1563,11 @@ function renderTypesEditor() {
     tr.innerHTML = `
       <td><strong>${ttnr}</strong></td>
       <td><input class="input" data-field="name" value="${row.name ?? ""}"></td>
-      <td><span class="muted">${plantId}</span></td>
+      <td>
+        <select class="input" data-field="plant_id">
+          ${plantOptionsHtml || `<option value="">(kein Werk)</option>`}
+        </select>
+      </td>
       <td>
         <select class="input" data-field="family_id">
           ${familyOptionsHtml || `<option value="">(keine Families)</option>`}
@@ -1490,7 +1575,13 @@ function renderTypesEditor() {
       </td>
       <td><input class="input" type="number" step="0.01" data-field="die_area_mm2" value="${row.die_area_mm2 ?? ""}"></td>
       <td><input class="input" data-field="package" value="${row.package ?? ""}"></td>
-      <td><input class="input" type="number" data-field="special_start_year" value="${row.special_start_year ?? ""}"></td>
+      <td>
+        <label class="checkbox-label">
+          <input type="checkbox" data-field="special_start_year_enabled" ${Number.isFinite(parseNumber(row.special_start_year)) ? "checked" : ""} />
+          Separat
+        </label>
+        <input class="input" type="number" data-field="special_start_year" value="${row.special_start_year ?? ""}">
+      </td>
       <td>
         <select class="input" data-field="tech_id">
           ${techOptionsHtml}
@@ -1499,6 +1590,70 @@ function renderTypesEditor() {
     `;
 
     tbody.appendChild(tr);
+
+    const plantSelect = tr.querySelector("[data-field=\"plant_id\"]");
+    const familySelect = tr.querySelector("[data-field=\"family_id\"]");
+    const specialToggle = tr.querySelector("[data-field=\"special_start_year_enabled\"]");
+    const specialInput = tr.querySelector("[data-field=\"special_start_year\"]");
+
+    const syncSpecialInput = () => {
+      if (!specialToggle || !specialInput) {
+        return;
+      }
+      specialInput.disabled = !specialToggle.checked;
+      if (!specialToggle.checked) {
+        specialInput.value = "";
+      }
+    };
+
+    const updateFamilyOptions = () => {
+      if (!plantSelect || !familySelect) {
+        return;
+      }
+      const nextPlantId = plantSelect.value;
+      const nextFamilies = getFamiliesForPlant(nextPlantId);
+      const currentFamily = familySelect.value;
+      familySelect.innerHTML =
+        nextFamilies
+          .map(
+            (family) =>
+              `<option value="${family.id}">${family.name || family.id}</option>`
+          )
+          .join("") || `<option value="">(keine Families)</option>`;
+      if (nextFamilies.find((family) => family.id === currentFamily)) {
+        familySelect.value = currentFamily;
+      } else if (nextFamilies.length > 0) {
+        familySelect.value = nextFamilies[0].id;
+      }
+    };
+
+    const updateTechOptions = () => {
+      const techSelect = tr.querySelector("[data-field=\"tech_id\"]");
+      if (!techSelect || !plantSelect) {
+        return;
+      }
+      const nextTechOptions = getTechOptionsForPlant(plantSelect.value);
+      const currentTech = techSelect.value;
+      techSelect.innerHTML = [`<option value="">–</option>`]
+        .concat(
+          nextTechOptions.map(
+            (tech) => `<option value="${tech.id}">${tech.name} (${tech.id})</option>`
+          )
+        )
+        .join("");
+      if (nextTechOptions.find((tech) => tech.id === currentTech)) {
+        techSelect.value = currentTech;
+      }
+    };
+
+    syncSpecialInput();
+
+    plantSelect?.addEventListener("change", () => {
+      updateFamilyOptions();
+      updateTechOptions();
+    });
+
+    specialToggle?.addEventListener("change", syncSpecialInput);
   });
 
   if (elements.typesEditorStatus) {
@@ -1521,13 +1676,16 @@ function saveTypesEditorChanges() {
       return original;
     }
     const getVal = (field) => tr.querySelector(`[data-field="${field}"]`)?.value ?? "";
+    const specialEnabled = Boolean(tr.querySelector("[data-field=\"special_start_year_enabled\"]")?.checked);
+    const specialYear = specialEnabled ? parseNumber(getVal("special_start_year")) : null;
     return {
       ...original,
       name: getVal("name").trim(),
+      plant_id: getVal("plant_id").trim(),
       family_id: getVal("family_id").trim(),
       die_area_mm2: parseNumber(getVal("die_area_mm2")),
       package: getVal("package").trim(),
-      special_start_year: parseNumber(getVal("special_start_year"))
+      special_start_year: specialYear
     };
   });
 
@@ -1672,7 +1830,6 @@ function renderInputLists() {
   renderListTable(
     elements.scenarioList,
     [
-      { key: "scenario_id", label: "ID", format: (_, row) => row.scenario_id || row.id },
       { key: "name", label: "Name" },
       { key: "start_year", label: "t0" },
       { key: "end_year", label: "tEnd" },
@@ -1712,8 +1869,16 @@ function renderInputLists() {
     [
       { key: "ttnr", label: "TTNR" },
       { key: "name", label: "Name" },
-      { key: "plant_id", label: "Werk" },
-      { key: "family_id", label: "Family" },
+      {
+        key: "plant_id",
+        label: "Werk",
+        format: (value) => (value ? getPlantLabel(value) : "Alle Werke")
+      },
+      {
+        key: "family_id",
+        label: "Family",
+        format: (value, row) => getFamilyLabel(row.plant_id, value) || value
+      },
       { key: "die_area_mm2", label: "Fläche mm²" }
     ],
     tables.chip_types || [],
@@ -1747,27 +1912,26 @@ function renderInputLists() {
 }
 
 function addScenario() {
-  const id = elements.scenarioIdInput.value.trim();
-  if (!id) {
+  const name = elements.scenarioNameInput.value.trim();
+  if (!name) {
     return;
   }
   const tables = getWorkingTables();
   const modelId = elements.scenarioModelInput.value || Array.from(state.model?.yieldModels?.keys() || [])[0];
   const row = {
-    scenario_id: id,
-    name: elements.scenarioNameInput.value.trim() || id,
+    scenario_id: name,
+    name,
     start_year: parseNumber(elements.scenarioStartInput.value),
     end_year: parseNumber(elements.scenarioEndInput.value),
     selected_yield_model_id: modelId
   };
-  const index = tables.scenarios.findIndex((scenario) => (scenario.scenario_id || scenario.id) === id);
+  const index = tables.scenarios.findIndex((scenario) => (scenario.scenario_id || scenario.id) === name);
   if (index >= 0) {
     tables.scenarios[index] = row;
   } else {
     tables.scenarios.push(row);
   }
-  applyTables({ tables, note: `Szenario ${id} gespeichert` });
-  elements.scenarioIdInput.value = "";
+  applyTables({ tables, note: `Szenario ${name} gespeichert` });
   elements.scenarioNameInput.value = "";
   elements.scenarioStartInput.value = "";
   elements.scenarioEndInput.value = "";
@@ -2074,7 +2238,7 @@ function renderScenarioOptions() {
   state.model.scenarios.forEach((scenario) => {
     const option = document.createElement("option");
     option.value = scenario.id;
-    option.textContent = `${scenario.id} – ${scenario.name}`;
+    option.textContent = scenario.name || scenario.id;
     elements.scenarioSelect.appendChild(option);
   });
   const initial = state.model?.scenarios[0];
