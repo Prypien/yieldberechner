@@ -183,6 +183,10 @@ const elements = {
   mapTechSelect: document.getElementById("map-tech-select"),
   addMappingButton: document.getElementById("add-mapping"),
   mappingList: document.getElementById("mapping-list"),
+  typesEditorTable: document.getElementById("types-editor-table"),
+  typesSaveButton: document.getElementById("types-save"),
+  typesResetButton: document.getElementById("types-reset"),
+  typesEditorStatus: document.getElementById("types-editor-status"),
   scenarioSelect: document.getElementById("scenario-select"),
   scenarioName: document.getElementById("scenario-name"),
   scenarioStart: document.getElementById("scenario-start"),
@@ -1239,92 +1243,274 @@ function renderListTable(container, columns, rows, onDelete) {
   container.appendChild(table);
 }
 
+function getTechOptionsForPlant(plantId) {
+  if (!state.model) {
+    return [];
+  }
+  const plant = state.model.plants.get(plantId);
+  if (!plant) {
+    return [];
+  }
+  return Array.from(plant.technologies.values()).map((tech) => ({ id: tech.id, name: tech.name }));
+}
+
+function getFamiliesForPlant(plantId) {
+  if (!state.model) {
+    return [];
+  }
+  const plant = state.model.plants.get(plantId);
+  if (!plant) {
+    return [];
+  }
+  return Array.from(plant.families.values()).map((family) => ({ id: family.id, name: family.name || family.id }));
+}
+
+function getMappedTechId(ttnr) {
+  const row = (state.tables.chip_type_tech || []).find((entry) => entry.ttnr === ttnr);
+  return row ? row.tech_id || row.id : "";
+}
+
+function setMappedTechId(ttnr, techId) {
+  const tables = getWorkingTables();
+  tables.chip_type_tech = tables.chip_type_tech || [];
+  tables.chip_type_tech = tables.chip_type_tech.filter((entry) => entry.ttnr !== ttnr);
+  if (techId) {
+    tables.chip_type_tech.push({ ttnr, tech_id: techId });
+  }
+  applyTables({ tables, note: `Tech-Mapping aktualisiert: ${ttnr} → ${techId || "∅"}` });
+}
+
+function renderTypesEditor() {
+  const table = elements.typesEditorTable;
+  if (!table || !state.model) {
+    return;
+  }
+  const chipTypes = state.tables.chip_types || [];
+  const thead = table.querySelector("thead");
+  const tbody = table.querySelector("tbody");
+
+  thead.innerHTML = `
+    <tr>
+      <th>TTNR</th>
+      <th>Name</th>
+      <th>Werk</th>
+      <th>Family</th>
+      <th>Die Area (mm²)</th>
+      <th>Package</th>
+      <th>Start Year</th>
+      <th>Tech</th>
+    </tr>
+  `;
+
+  tbody.innerHTML = "";
+
+  chipTypes.forEach((row) => {
+    const ttnr = row.ttnr;
+    const plantId = row.plant_id || "";
+    const families = getFamiliesForPlant(plantId);
+    const techOptions = getTechOptionsForPlant(plantId);
+    const mappedTech = getMappedTechId(ttnr);
+
+    const tr = document.createElement("tr");
+    tr.dataset.ttnr = ttnr;
+
+    const familyOptionsHtml = families
+      .map(
+        (family) =>
+          `<option value="${family.id}" ${String(row.family_id) === String(family.id) ? "selected" : ""}>${family.id}</option>`
+      )
+      .join("");
+
+    const techOptionsHtml = [`<option value="">–</option>`]
+      .concat(
+        techOptions.map(
+          (tech) => `<option value="${tech.id}" ${tech.id === mappedTech ? "selected" : ""}>${tech.name} (${tech.id})</option>`
+        )
+      )
+      .join("");
+
+    tr.innerHTML = `
+      <td><strong>${ttnr}</strong></td>
+      <td><input class="input" data-field="name" value="${row.name ?? ""}"></td>
+      <td><span class="muted">${plantId}</span></td>
+      <td>
+        <select class="input" data-field="family_id">
+          ${familyOptionsHtml || `<option value="">(keine Families)</option>`}
+        </select>
+      </td>
+      <td><input class="input" type="number" step="0.01" data-field="die_area_mm2" value="${row.die_area_mm2 ?? ""}"></td>
+      <td><input class="input" data-field="package" value="${row.package ?? ""}"></td>
+      <td><input class="input" type="number" data-field="special_start_year" value="${row.special_start_year ?? ""}"></td>
+      <td>
+        <select class="input" data-field="tech_id">
+          ${techOptionsHtml}
+        </select>
+      </td>
+    `;
+
+    tbody.appendChild(tr);
+  });
+
+  if (elements.typesEditorStatus) {
+    elements.typesEditorStatus.textContent = `${chipTypes.length} Typen geladen. Änderungen erst mit “Änderungen speichern” übernehmen.`;
+  }
+}
+
+function saveTypesEditorChanges() {
+  const table = elements.typesEditorTable;
+  if (!table) {
+    return;
+  }
+  const tables = getWorkingTables();
+  const chipTypes = tables.chip_types || [];
+  const rows = Array.from(table.querySelectorAll("tbody tr"));
+
+  const nextChipTypes = chipTypes.map((original) => {
+    const tr = rows.find((row) => row.dataset.ttnr === original.ttnr);
+    if (!tr) {
+      return original;
+    }
+    const getVal = (field) => tr.querySelector(`[data-field="${field}"]`)?.value ?? "";
+    return {
+      ...original,
+      name: getVal("name").trim(),
+      family_id: getVal("family_id").trim(),
+      die_area_mm2: parseNumber(getVal("die_area_mm2")),
+      package: getVal("package").trim(),
+      special_start_year: parseNumber(getVal("special_start_year"))
+    };
+  });
+
+  let nextMappings = (tables.chip_type_tech || []).slice();
+  const allTtnr = new Set(nextChipTypes.map((row) => row.ttnr));
+  nextMappings = nextMappings.filter((row) => !allTtnr.has(row.ttnr));
+
+  rows.forEach((tr) => {
+    const ttnr = tr.dataset.ttnr;
+    const techId = tr.querySelector(`[data-field="tech_id"]`)?.value ?? "";
+    if (techId) {
+      nextMappings.push({ ttnr, tech_id: techId });
+    }
+  });
+
+  tables.chip_types = nextChipTypes;
+  tables.chip_type_tech = nextMappings;
+  applyTables({ tables, note: "Typen tabellarisch aktualisiert" });
+}
+
+function resetTypesEditor() {
+  renderTypesEditor();
+  if (elements.typesEditorStatus) {
+    elements.typesEditorStatus.textContent = "Änderungen verworfen (Anzeige neu aus state gerendert).";
+  }
+}
+
 function refreshInputSelects() {
   if (!state.model) {
     return;
   }
-  updateSelect(
-    elements.scenarioModelInput,
-    Array.from(state.model.yieldModels.keys()),
-    elements.scenarioModelInput.value,
-    (id) => state.model.yieldModels.get(id)?.name || id
-  );
-  if (!elements.scenarioModelInput.value && state.model.yieldModels.size > 0) {
-    elements.scenarioModelInput.value = Array.from(state.model.yieldModels.keys())[0];
+  if (elements.scenarioModelInput) {
+    updateSelect(
+      elements.scenarioModelInput,
+      Array.from(state.model.yieldModels.keys()),
+      elements.scenarioModelInput.value,
+      (id) => state.model.yieldModels.get(id)?.name || id
+    );
+    if (!elements.scenarioModelInput.value && state.model.yieldModels.size > 0) {
+      elements.scenarioModelInput.value = Array.from(state.model.yieldModels.keys())[0];
+    }
   }
 
   const plantIds = Array.from(state.model.plants.keys());
-  updateSelect(elements.familyPlantSelect, plantIds, elements.familyPlantSelect.value, (id) => id);
-  updateSelect(elements.typePlantSelect, plantIds, elements.typePlantSelect.value, (id) => id);
-  updateSelect(elements.techPlantSelect, plantIds, elements.techPlantSelect.value, (id) => id);
-  if (!elements.familyPlantSelect.value && plantIds.length > 0) {
-    elements.familyPlantSelect.value = plantIds[0];
+  if (elements.familyPlantSelect) {
+    updateSelect(elements.familyPlantSelect, plantIds, elements.familyPlantSelect.value, (id) => id);
+    if (!elements.familyPlantSelect.value && plantIds.length > 0) {
+      elements.familyPlantSelect.value = plantIds[0];
+    }
   }
-  if (!elements.typePlantSelect.value && plantIds.length > 0) {
-    elements.typePlantSelect.value = plantIds[0];
+  if (elements.typePlantSelect) {
+    updateSelect(elements.typePlantSelect, plantIds, elements.typePlantSelect.value, (id) => id);
+    if (!elements.typePlantSelect.value && plantIds.length > 0) {
+      elements.typePlantSelect.value = plantIds[0];
+    }
   }
-  if (!elements.techPlantSelect.value && plantIds.length > 0) {
-    elements.techPlantSelect.value = plantIds[0];
+  if (elements.techPlantSelect) {
+    updateSelect(elements.techPlantSelect, plantIds, elements.techPlantSelect.value, (id) => id);
+    if (!elements.techPlantSelect.value && plantIds.length > 0) {
+      elements.techPlantSelect.value = plantIds[0];
+    }
   }
 
   const scenarios = state.model.scenarios.map((scenario) => scenario.id);
-  updateSelect(elements.techScenarioSelect, ["", ...scenarios], elements.techScenarioSelect.value, (id) => {
-    if (!id) {
-      return "Global";
-    }
-    return id;
-  });
-
-  updateSelect(elements.techTargetSelect, yieldFields, elements.techTargetSelect.value, (id) => id);
-
-  const familyPlantId = elements.familyPlantSelect.value;
-  const familyOptions = [];
-  const familyPlant = state.model.plants.get(familyPlantId);
-  if (familyPlant) {
-    familyPlant.families.forEach((family) => familyOptions.push(family.id));
-  }
-  updateSelect(elements.familySelect, familyOptions, elements.familySelect.value, (id) => id);
-  if (!elements.familySelect.value && familyOptions.length > 0) {
-    elements.familySelect.value = familyOptions[0];
-  }
-
-  const selectedPlant = elements.typePlantSelect.value;
-  const families = [];
-  state.model.plants.forEach((plant) => {
-    if (selectedPlant && plant.id !== selectedPlant) {
-      return;
-    }
-    plant.families.forEach((family) => families.push(family.id));
-  });
-  updateSelect(elements.typeFamilySelect, families, elements.typeFamilySelect.value, (id) => id);
-
-  const chipTypes = new Set();
-  state.model.plants.forEach((plant) => {
-    plant.chipTypes.forEach((chip) => {
-      if (chip.ttnr) {
-        chipTypes.add(chip.ttnr);
+  if (elements.techScenarioSelect) {
+    updateSelect(elements.techScenarioSelect, ["", ...scenarios], elements.techScenarioSelect.value, (id) => {
+      if (!id) {
+        return "Global";
       }
+      return id;
     });
-  });
-  updateSelect(elements.mapTypeSelect, Array.from(chipTypes), elements.mapTypeSelect.value, (id) => id);
+  }
 
-  const technologies = [];
-  state.model.plants.forEach((plant) => {
-    plant.technologies.forEach((tech) => {
-      technologies.push({
-        id: tech.id,
-        label: `${tech.name} (${tech.id})${tech.scenarioId ? ` · ${tech.scenarioId}` : ""}`,
-        scenarioId: tech.scenarioId || ""
+  if (elements.techTargetSelect) {
+    updateSelect(elements.techTargetSelect, yieldFields, elements.techTargetSelect.value, (id) => id);
+  }
+
+  if (elements.familyPlantSelect && elements.familySelect) {
+    const familyPlantId = elements.familyPlantSelect.value;
+    const familyOptions = [];
+    const familyPlant = state.model.plants.get(familyPlantId);
+    if (familyPlant) {
+      familyPlant.families.forEach((family) => familyOptions.push(family.id));
+    }
+    updateSelect(elements.familySelect, familyOptions, elements.familySelect.value, (id) => id);
+    if (!elements.familySelect.value && familyOptions.length > 0) {
+      elements.familySelect.value = familyOptions[0];
+    }
+  }
+
+  if (elements.typePlantSelect && elements.typeFamilySelect) {
+    const selectedPlant = elements.typePlantSelect.value;
+    const families = [];
+    state.model.plants.forEach((plant) => {
+      if (selectedPlant && plant.id !== selectedPlant) {
+        return;
+      }
+      plant.families.forEach((family) => families.push(family.id));
+    });
+    updateSelect(elements.typeFamilySelect, families, elements.typeFamilySelect.value, (id) => id);
+  }
+
+  if (elements.mapTypeSelect) {
+    const chipTypes = new Set();
+    state.model.plants.forEach((plant) => {
+      plant.chipTypes.forEach((chip) => {
+        if (chip.ttnr) {
+          chipTypes.add(chip.ttnr);
+        }
       });
     });
-  });
-  elements.mapTechSelect.innerHTML = "";
-  technologies.forEach((tech) => {
-    const option = document.createElement("option");
-    option.value = tech.id;
-    option.textContent = tech.label;
-    elements.mapTechSelect.appendChild(option);
-  });
+    updateSelect(elements.mapTypeSelect, Array.from(chipTypes), elements.mapTypeSelect.value, (id) => id);
+  }
+
+  if (elements.mapTechSelect) {
+    const technologies = [];
+    state.model.plants.forEach((plant) => {
+      plant.technologies.forEach((tech) => {
+        technologies.push({
+          id: tech.id,
+          label: `${tech.name} (${tech.id})${tech.scenarioId ? ` · ${tech.scenarioId}` : ""}`,
+          scenarioId: tech.scenarioId || ""
+        });
+      });
+    });
+    elements.mapTechSelect.innerHTML = "";
+    technologies.forEach((tech) => {
+      const option = document.createElement("option");
+      option.value = tech.id;
+      option.textContent = tech.label;
+      elements.mapTechSelect.appendChild(option);
+    });
+  }
 
   hydrateFamilyEditorFromSelection();
 }
@@ -1483,6 +1669,9 @@ function addPlant() {
 }
 
 function hydrateFamilyEditorFromSelection() {
+  if (!elements.familyPlantSelect || !elements.familySelect) {
+    return;
+  }
   const plantId = elements.familyPlantSelect.value;
   const familyId = elements.familySelect.value;
   if (!plantId || !familyId) {
@@ -1509,6 +1698,9 @@ function hydrateFamilyEditorFromSelection() {
 }
 
 function saveFamilyEdits() {
+  if (!elements.familyPlantSelect || !elements.familySelect) {
+    return;
+  }
   const plantId = elements.familyPlantSelect.value;
   const familyId = elements.familySelect.value;
   if (!plantId || !familyId) {
@@ -1537,6 +1729,9 @@ function saveFamilyEdits() {
 }
 
 function addChipType() {
+  if (!elements.typePlantSelect || !elements.typeFamilySelect) {
+    return;
+  }
   const plantId = elements.typePlantSelect.value;
   const familyId = elements.typeFamilySelect.value;
   const ttnr = elements.typeTtnrInput.value.trim();
@@ -1568,6 +1763,9 @@ function addChipType() {
 }
 
 function addTechnology() {
+  if (!elements.techPlantSelect) {
+    return;
+  }
   const plantId = elements.techPlantSelect.value;
   const techId = elements.techIdInput.value.trim();
   if (!plantId || !techId) {
@@ -1600,6 +1798,9 @@ function addTechnology() {
 }
 
 function addMapping() {
+  if (!elements.mapTypeSelect || !elements.mapTechSelect) {
+    return;
+  }
   const ttnr = elements.mapTypeSelect.value;
   const techId = elements.mapTechSelect.value;
   if (!ttnr || !techId) {
@@ -2082,6 +2283,9 @@ function updateFilters() {
 }
 
 function updateSelect(select, values, currentValue, labelFn) {
+  if (!select) {
+    return;
+  }
   select.innerHTML = "";
   values.forEach((value) => {
     const option = document.createElement("option");
@@ -2237,6 +2441,7 @@ function applyTables({ tables, note }) {
   renderTechnologySettings();
   renderDataOverview();
   renderInputLists();
+  renderTypesEditor();
   const firstTableName = Object.keys(tables)[0];
   if (firstTableName) {
     renderTablePreview(firstTableName, tables[firstTableName] || []);
@@ -2383,6 +2588,8 @@ function initEvents() {
   elements.addTypeButton?.addEventListener("click", addChipType);
   elements.addTechButton?.addEventListener("click", addTechnology);
   elements.addMappingButton?.addEventListener("click", addMapping);
+  elements.typesSaveButton?.addEventListener("click", saveTypesEditorChanges);
+  elements.typesResetButton?.addEventListener("click", resetTypesEditor);
   elements.reloadBaseDataButton?.addEventListener("click", async () => {
     setImportStatus({ status: "status-ok", message: "Lade base_data.json…", details: "" });
     try {
