@@ -1,6 +1,7 @@
 const STORAGE_KEY = "yield-ui-settings";
 const INPUT_DATA_KEY = "yield-input-data";
 const INPUT_SUMMARY_KEY = "yield-input-summary";
+const BASE_DATA_URL = "base_data.json";
 
 const numericFields = new Set([
   "start_year",
@@ -134,6 +135,7 @@ const elements = {
   importStatus: document.getElementById("import-status"),
   importDetails: document.getElementById("import-details"),
   importSummary: document.getElementById("import-summary"),
+  reloadBaseDataButton: document.getElementById("reload-base-data"),
   scenarioIdInput: document.getElementById("scenario-id-input"),
   scenarioNameInput: document.getElementById("scenario-name-input"),
   scenarioStartInput: document.getElementById("scenario-start-input"),
@@ -237,16 +239,102 @@ function loadInputSummary() {
   return null;
 }
 
+async function fetchBaseTables() {
+  const response = await fetch(BASE_DATA_URL, { cache: "no-store" });
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}`);
+  }
+  const parsed = await response.json();
+  return { ...structuredClone(DEFAULT_TABLES), ...parsed };
+}
+
+function upsertByKey(existingRows, baseRows, keyFields, { preserveNonNull = true } = {}) {
+  const makeKey = (row) => keyFields.map((key) => String(row[key] ?? "")).join("||");
+  const map = new Map(existingRows.map((row) => [makeKey(row), { ...row }]));
+  baseRows.forEach((baseRow) => {
+    const key = makeKey(baseRow);
+    if (!map.has(key)) {
+      map.set(key, { ...baseRow });
+      return;
+    }
+    const current = map.get(key);
+    const merged = { ...current };
+    Object.keys(baseRow).forEach((field) => {
+      const curVal = current[field];
+      const baseVal = baseRow[field];
+      if (!preserveNonNull) {
+        merged[field] = baseVal;
+        return;
+      }
+      const hasCur = !(curVal === null || curVal === undefined || curVal === "");
+      merged[field] = hasCur ? curVal : baseVal;
+    });
+    map.set(key, merged);
+  });
+  return Array.from(map.values());
+}
+
+function mergeBaseIntoTables(current, base) {
+  const next = { ...structuredClone(DEFAULT_TABLES), ...current };
+  next.plants = upsertByKey(next.plants || [], base.plants || [], ["plant_id"], { preserveNonNull: true });
+  next.families = upsertByKey(next.families || [], base.families || [], ["plant_id", "family_id"], { preserveNonNull: true });
+
+  const curTypes = next.chip_types || [];
+  const baseTypes = base.chip_types || [];
+  const makeTypeKey = (row) => {
+    const trimmed = String(row.ttnr ?? "").trim();
+    return trimmed || `NAME:${String(row.name ?? "").trim()}`;
+  };
+  const typeMap = new Map(curTypes.map((row) => [makeTypeKey(row), { ...row }]));
+  baseTypes.forEach((baseRow) => {
+    const key = makeTypeKey(baseRow);
+    if (!typeMap.has(key)) {
+      typeMap.set(key, { ...baseRow });
+      return;
+    }
+    const currentRow = typeMap.get(key);
+    const merged = { ...currentRow };
+    Object.keys(baseRow).forEach((field) => {
+      const curVal = currentRow[field];
+      const baseVal = baseRow[field];
+      const hasCur = !(curVal === null || curVal === undefined || curVal === "");
+      merged[field] = hasCur ? curVal : baseVal;
+    });
+    typeMap.set(key, merged);
+  });
+  next.chip_types = Array.from(typeMap.values());
+
+  next.technologies = upsertByKey(
+    next.technologies || [],
+    base.technologies || [],
+    ["plant_id", "tech_id", "scenario_id"],
+    { preserveNonNull: true }
+  );
+  next.technology_years = upsertByKey(
+    next.technology_years || [],
+    base.technology_years || [],
+    ["tech_id", "year"],
+    { preserveNonNull: true }
+  );
+  next.chip_type_tech = upsertByKey(
+    next.chip_type_tech || [],
+    base.chip_type_tech || [],
+    ["ttnr", "tech_id"],
+    { preserveNonNull: true }
+  );
+
+  next.scenarios = next.scenarios || [];
+  next.scenario_plants = next.scenario_plants || [];
+  next.plant_base_yields = next.plant_base_yields || [];
+
+  return next;
+}
+
 async function loadInputTables() {
   const stored = localStorage.getItem(INPUT_DATA_KEY);
   if (!stored) {
     try {
-      const response = await fetch("base_data.json", { cache: "no-store" });
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-      const parsed = await response.json();
-      return { ...structuredClone(DEFAULT_TABLES), ...parsed };
+      return await fetchBaseTables();
     } catch (error) {
       console.warn("Failed to load base_data.json", error);
       return structuredClone(DEFAULT_TABLES);
@@ -2246,6 +2334,22 @@ function initEvents() {
   elements.addTypeButton?.addEventListener("click", addChipType);
   elements.addTechButton?.addEventListener("click", addTechnology);
   elements.addMappingButton?.addEventListener("click", addMapping);
+  elements.reloadBaseDataButton?.addEventListener("click", async () => {
+    setImportStatus({ status: "status-ok", message: "Lade base_data.json…", details: "" });
+    try {
+      const base = await fetchBaseTables();
+      const current = getWorkingTables();
+      const merged = mergeBaseIntoTables(current, base);
+      applyTables({ tables: merged, note: "Base-Daten aktualisiert (merge)" });
+    } catch (error) {
+      console.warn(error);
+      setImportStatus({
+        status: "status-error",
+        message: "Base-Daten konnten nicht geladen werden",
+        details: `<div class="muted">${String(error)}</div>`
+      });
+    }
+  });
 
   elements.typePlantSelect?.addEventListener("change", refreshInputSelects);
 
