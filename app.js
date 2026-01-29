@@ -154,13 +154,12 @@ const elements = {
   addPlantButton: document.getElementById("add-plant"),
   plantList: document.getElementById("plant-list"),
   familyPlantSelect: document.getElementById("family-plant-select"),
-  familyIdInput: document.getElementById("family-id-input"),
-  familyNameInput: document.getElementById("family-name-input"),
+  familySelect: document.getElementById("family-select"),
   familyDensityStart: document.getElementById("family-density-start"),
   familyDensityEnd: document.getElementById("family-density-end"),
   familyT0Input: document.getElementById("family-t0-input"),
   familyTEndInput: document.getElementById("family-tend-input"),
-  addFamilyButton: document.getElementById("add-family"),
+  saveFamilyButton: document.getElementById("save-family"),
   familyList: document.getElementById("family-list"),
   typePlantSelect: document.getElementById("type-plant-select"),
   typeFamilySelect: document.getElementById("type-family-select"),
@@ -332,20 +331,23 @@ function mergeBaseIntoTables(current, base) {
 
 async function loadInputTables() {
   const stored = localStorage.getItem(INPUT_DATA_KEY);
-  if (!stored) {
+  let current = null;
+  if (stored) {
     try {
-      return await fetchBaseTables();
+      current = { ...structuredClone(DEFAULT_TABLES), ...JSON.parse(stored) };
     } catch (error) {
-      console.warn("Failed to load base_data.json", error);
-      return structuredClone(DEFAULT_TABLES);
+      console.warn("Failed to parse input tables", error);
     }
   }
   try {
-    const parsed = JSON.parse(stored);
-    return { ...structuredClone(DEFAULT_TABLES), ...parsed };
+    const base = await fetchBaseTables();
+    if (current) {
+      return mergeBaseIntoTables(current, base);
+    }
+    return base;
   } catch (error) {
-    console.warn("Failed to parse input tables", error);
-    return structuredClone(DEFAULT_TABLES);
+    console.warn("Failed to load base_data.json", error);
+    return current || structuredClone(DEFAULT_TABLES);
   }
 }
 
@@ -1255,6 +1257,15 @@ function refreshInputSelects() {
   updateSelect(elements.familyPlantSelect, plantIds, elements.familyPlantSelect.value, (id) => id);
   updateSelect(elements.typePlantSelect, plantIds, elements.typePlantSelect.value, (id) => id);
   updateSelect(elements.techPlantSelect, plantIds, elements.techPlantSelect.value, (id) => id);
+  if (!elements.familyPlantSelect.value && plantIds.length > 0) {
+    elements.familyPlantSelect.value = plantIds[0];
+  }
+  if (!elements.typePlantSelect.value && plantIds.length > 0) {
+    elements.typePlantSelect.value = plantIds[0];
+  }
+  if (!elements.techPlantSelect.value && plantIds.length > 0) {
+    elements.techPlantSelect.value = plantIds[0];
+  }
 
   const scenarios = state.model.scenarios.map((scenario) => scenario.id);
   updateSelect(elements.techScenarioSelect, ["", ...scenarios], elements.techScenarioSelect.value, (id) => {
@@ -1266,6 +1277,17 @@ function refreshInputSelects() {
 
   updateSelect(elements.techTargetSelect, yieldFields, elements.techTargetSelect.value, (id) => id);
 
+  const familyPlantId = elements.familyPlantSelect.value;
+  const familyOptions = [];
+  const familyPlant = state.model.plants.get(familyPlantId);
+  if (familyPlant) {
+    familyPlant.families.forEach((family) => familyOptions.push(family.id));
+  }
+  updateSelect(elements.familySelect, familyOptions, elements.familySelect.value, (id) => id);
+  if (!elements.familySelect.value && familyOptions.length > 0) {
+    elements.familySelect.value = familyOptions[0];
+  }
+
   const selectedPlant = elements.typePlantSelect.value;
   const families = [];
   state.model.plants.forEach((plant) => {
@@ -1276,11 +1298,15 @@ function refreshInputSelects() {
   });
   updateSelect(elements.typeFamilySelect, families, elements.typeFamilySelect.value, (id) => id);
 
-  const chipTypes = [];
+  const chipTypes = new Set();
   state.model.plants.forEach((plant) => {
-    plant.chipTypes.forEach((chip) => chipTypes.push(chip.ttnr));
+    plant.chipTypes.forEach((chip) => {
+      if (chip.ttnr) {
+        chipTypes.add(chip.ttnr);
+      }
+    });
   });
-  updateSelect(elements.mapTypeSelect, chipTypes, elements.mapTypeSelect.value, (id) => id);
+  updateSelect(elements.mapTypeSelect, Array.from(chipTypes), elements.mapTypeSelect.value, (id) => id);
 
   const technologies = [];
   state.model.plants.forEach((plant) => {
@@ -1299,6 +1325,8 @@ function refreshInputSelects() {
     option.textContent = tech.label;
     elements.mapTechSelect.appendChild(option);
   });
+
+  hydrateFamilyEditorFromSelection();
 }
 
 function renderInputLists() {
@@ -1454,37 +1482,58 @@ function addPlant() {
   elements.plantYieldEpiShip.value = "";
 }
 
-function addFamily() {
+function hydrateFamilyEditorFromSelection() {
   const plantId = elements.familyPlantSelect.value;
-  const familyId = elements.familyIdInput.value.trim();
+  const familyId = elements.familySelect.value;
+  if (!plantId || !familyId) {
+    elements.familyDensityStart.value = "";
+    elements.familyDensityEnd.value = "";
+    elements.familyT0Input.value = "";
+    elements.familyTEndInput.value = "";
+    return;
+  }
+  const row = (state.tables?.families || []).find(
+    (family) => family.plant_id === plantId && (family.family_id || family.id) === familyId
+  );
+  if (!row) {
+    elements.familyDensityStart.value = "";
+    elements.familyDensityEnd.value = "";
+    elements.familyT0Input.value = "";
+    elements.familyTEndInput.value = "";
+    return;
+  }
+  elements.familyDensityStart.value = row.D0 ?? "";
+  elements.familyDensityEnd.value = row.D_in ?? "";
+  elements.familyT0Input.value = row.t_start ?? row.t0 ?? "";
+  elements.familyTEndInput.value = row.t_end ?? row.tEnd ?? "";
+}
+
+function saveFamilyEdits() {
+  const plantId = elements.familyPlantSelect.value;
+  const familyId = elements.familySelect.value;
   if (!plantId || !familyId) {
     return;
   }
   const tables = getWorkingTables();
+  const index = tables.families.findIndex(
+    (family) => family.plant_id === plantId && (family.family_id || family.id) === familyId
+  );
+  const existing = index >= 0 ? tables.families[index] : null;
   const row = {
     plant_id: plantId,
     family_id: familyId,
-    name: elements.familyNameInput.value.trim() || familyId,
+    name: existing?.name || familyId,
     D0: parseNumber(elements.familyDensityStart.value),
     D_in: parseNumber(elements.familyDensityEnd.value),
     t_start: parseNumber(elements.familyT0Input.value),
     t_end: parseNumber(elements.familyTEndInput.value)
   };
-  const index = tables.families.findIndex(
-    (family) => family.plant_id === plantId && (family.family_id || family.id) === familyId
-  );
   if (index >= 0) {
-    tables.families[index] = row;
+    tables.families[index] = { ...existing, ...row };
   } else {
     tables.families.push(row);
   }
-  applyTables({ tables, note: `Familie ${familyId} gespeichert` });
-  elements.familyIdInput.value = "";
-  elements.familyNameInput.value = "";
-  elements.familyDensityStart.value = "";
-  elements.familyDensityEnd.value = "";
-  elements.familyT0Input.value = "";
-  elements.familyTEndInput.value = "";
+  applyTables({ tables, note: `Family ${familyId} gespeichert` });
 }
 
 function addChipType() {
@@ -2330,7 +2379,7 @@ function initEvents() {
 
   elements.addScenarioButton?.addEventListener("click", addScenario);
   elements.addPlantButton?.addEventListener("click", addPlant);
-  elements.addFamilyButton?.addEventListener("click", addFamily);
+  elements.saveFamilyButton?.addEventListener("click", saveFamilyEdits);
   elements.addTypeButton?.addEventListener("click", addChipType);
   elements.addTechButton?.addEventListener("click", addTechnology);
   elements.addMappingButton?.addEventListener("click", addMapping);
@@ -2351,6 +2400,11 @@ function initEvents() {
     }
   });
 
+  elements.familyPlantSelect?.addEventListener("change", () => {
+    refreshInputSelects();
+    hydrateFamilyEditorFromSelection();
+  });
+  elements.familySelect?.addEventListener("change", hydrateFamilyEditorFromSelection);
   elements.typePlantSelect?.addEventListener("change", refreshInputSelects);
 
   elements.scenarioSelect.addEventListener("change", () => {
