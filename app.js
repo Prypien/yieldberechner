@@ -198,6 +198,7 @@ const elements = {
   scenarioEnd: document.getElementById("scenario-end"),
   modelSelect: document.getElementById("model-select"),
   plantSelect: document.getElementById("plant-select"),
+  plantToggleGroup: document.getElementById("plant-toggle-group"),
   scenarioYieldsTable: document.getElementById("scenario-yields-table"),
   scenarioYieldsQuickFill: document.getElementById("scenario-yields-quick-fill"),
   scenarioYieldsSave: document.getElementById("scenario-yields-save"),
@@ -2602,6 +2603,44 @@ function renderPlantSelect(scenario) {
     option.selected = true;
     elements.plantSelect.appendChild(option);
   });
+  updatePlantToggleState();
+}
+
+function updatePlantToggleState() {
+  if (!elements.plantToggleGroup || !elements.plantSelect) {
+    return;
+  }
+  const selectedIds = new Set(Array.from(elements.plantSelect.selectedOptions).map((opt) => opt.value));
+  const availableIds = new Set(Array.from(elements.plantSelect.options).map((opt) => opt.value));
+  const hasRseP = selectedIds.has("RseP");
+  const hasRtP1 = selectedIds.has("RtP1");
+  elements.plantToggleGroup.querySelectorAll("[data-plant-toggle]").forEach((button) => {
+    const mode = button.dataset.plantToggle;
+    if (mode === "RseP") {
+      button.classList.toggle("active", hasRseP && !hasRtP1);
+      button.disabled = !availableIds.has("RseP");
+      return;
+    }
+    if (mode === "RtP1") {
+      button.classList.toggle("active", hasRtP1 && !hasRseP);
+      button.disabled = !availableIds.has("RtP1");
+      return;
+    }
+    if (mode === "both") {
+      button.classList.toggle("active", hasRseP && hasRtP1);
+      button.disabled = !availableIds.has("RseP") || !availableIds.has("RtP1");
+    }
+  });
+}
+
+function setPlantSelection(plantIds) {
+  const available = new Set(Array.from(elements.plantSelect.options).map((option) => option.value));
+  const selected = new Set(plantIds.filter((id) => available.has(id)));
+  Array.from(elements.plantSelect.options).forEach((option) => {
+    option.selected = selected.has(option.value);
+  });
+  updatePlantToggleState();
+  validateAndCompute();
 }
 
 function getSelectedScenario() {
@@ -2994,7 +3033,10 @@ function initEvents() {
   });
 
   elements.modelSelect.addEventListener("change", validateAndCompute);
-  elements.plantSelect.addEventListener("change", validateAndCompute);
+  elements.plantSelect.addEventListener("change", () => {
+    updatePlantToggleState();
+    validateAndCompute();
+  });
   elements.scenarioStart.addEventListener("change", () => {
     renderScenarioYieldsEditor();
     validateAndCompute();
@@ -3004,6 +3046,25 @@ function initEvents() {
     validateAndCompute();
   });
   elements.runCalc.addEventListener("click", validateAndCompute);
+
+  elements.plantToggleGroup?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-plant-toggle]");
+    if (!button) {
+      return;
+    }
+    const mode = button.dataset.plantToggle;
+    if (mode === "both") {
+      setPlantSelection(["RseP", "RtP1"]);
+      return;
+    }
+    if (mode === "RseP") {
+      setPlantSelection(["RseP"]);
+      return;
+    }
+    if (mode === "RtP1") {
+      setPlantSelection(["RtP1"]);
+    }
+  });
 
   elements.filterSearch.addEventListener("input", (event) => {
     state.ui.filters.search = event.target.value;
