@@ -13,58 +13,132 @@
 
     <!-- Header -->
     <header class="app-header">
-      <h1 class="app-title">Yield Berechner</h1>
+      <div>
+        <h1 class="app-title">Yield Berechner</h1>
+        <p class="app-subtitle">Alle Szenarien, Eingaben und Ergebnisse in einer klaren Übersicht.</p>
+      </div>
+      <div class="app-badge">Yield Suite</div>
     </header>
 
-    <!-- Controls / Inputs -->
-    <section class="controls">
-
-      <div class="control-group">
-        <label class="control-label" for="scenario-select">
-          Szenario
-        </label>
-        <select
-          id="scenario-select"
-          class="control-select"
-        ></select>
+    <!-- Inputs / Setup -->
+    <section class="input-panel">
+      <div class="panel-header">
+        <div>
+          <h2>Inputs &amp; Szenario-Setup</h2>
+          <p>Lege Szenarien an, pflege die Yield-Werte und speichere deine Konfigurationen.</p>
+        </div>
+        <span class="panel-tag">Status live</span>
       </div>
 
-      <div class="control-actions">
-        <button
-          id="run-calc"
-          class="btn btn-primary"
-          type="button"
-        >
-          Berechnen
-        </button>
+      <div class="tabs">
+        <input type="radio" name="tabs" id="tab-scenario" checked />
+        <input type="radio" name="tabs" id="tab-yields" />
+        <input type="radio" name="tabs" id="tab-notes" />
 
-        <button
-          id="save-data"
-          class="btn btn-secondary"
-          type="button"
-        >
-          Speichern
-        </button>
+        <div class="tab-labels">
+          <label for="tab-scenario">Szenario</label>
+          <label for="tab-yields">Yield-Eingaben</label>
+          <label for="tab-notes">Notizen</label>
+        </div>
+
+        <div class="tab-panels">
+          <div class="tab-panel" data-tab="scenario">
+            <div class="form-grid">
+              <div class="form-field">
+                <label for="scenario-select">Szenario auswählen</label>
+                <select id="scenario-select" class="control-select"></select>
+              </div>
+              <div class="form-field">
+                <label for="scenario-name">Szenario-Name</label>
+                <input id="scenario-name" type="text" placeholder="z.B. Q4 Ramp-up" />
+              </div>
+              <div class="form-field">
+                <label for="scenario-year">Planungsjahr</label>
+                <input id="scenario-year" type="text" placeholder="2025" />
+              </div>
+              <div class="form-field">
+                <label for="scenario-owner">Verantwortlich</label>
+                <input id="scenario-owner" type="text" placeholder="Team / Owner" />
+              </div>
+            </div>
+
+            <div class="control-actions">
+              <button id="run-calc" class="btn btn-primary" type="button">Berechnen</button>
+              <button id="save-data" class="btn btn-secondary" type="button">Speichern</button>
+            </div>
+
+            <div class="status">
+              <div id="status" class="status-text"></div>
+            </div>
+          </div>
+
+          <div class="tab-panel" data-tab="yields">
+            <div class="form-grid yield-grid">
+              <div class="form-field">
+                <label for="input-fab">FAB Yield</label>
+                <input id="input-fab" type="number" step="0.01" placeholder="z.B. 96.50%" />
+              </div>
+              <div class="form-field">
+                <label for="input-epi">EPI Yield</label>
+                <input id="input-epi" type="number" step="0.01" placeholder="z.B. 98.10%" />
+              </div>
+              <div class="form-field">
+                <label for="input-vm">VM Yield</label>
+                <input id="input-vm" type="number" step="0.01" placeholder="z.B. 97.40%" />
+              </div>
+              <div class="form-field">
+                <label for="input-saw">SAW Yield</label>
+                <input id="input-saw" type="number" step="0.01" placeholder="z.B. 99.00%" />
+              </div>
+              <div class="form-field">
+                <label for="input-kgd">KGD Yield</label>
+                <input id="input-kgd" type="number" step="0.01" placeholder="z.B. 98.70%" />
+              </div>
+              <div class="form-field">
+                <label for="input-osat">OSAT Yield</label>
+                <input id="input-osat" type="number" step="0.01" placeholder="z.B. 99.20%" />
+              </div>
+              <div class="form-field form-field--wide">
+                <label for="input-total">Total Yield (Auto)</label>
+                <input id="input-total" type="text" placeholder="berechnet nach FAB ➜ Total" disabled />
+              </div>
+            </div>
+          </div>
+
+          <div class="tab-panel" data-tab="notes">
+            <div class="form-field form-field--wide">
+              <label for="scenario-notes">Ergänzende Notizen</label>
+              <textarea id="scenario-notes" rows="6" placeholder="Besondere Annahmen, Yield-Hebel, Risiken ..."></textarea>
+            </div>
+          </div>
+        </div>
       </div>
-
-    </section>
-
-    <!-- Status / Messages -->
-    <section class="status">
-      <div
-        id="status"
-        class="status-text"
-      ></div>
     </section>
 
     <!-- Output / Results -->
     <section class="results">
+      <div class="results-header">
+        <div>
+          <h2>Yield-Tabelle (FAB ➜ Total Yield)</h2>
+          <p>Übersicht aller berechneten Werte entlang der Prozesskette.</p>
+        </div>
+        <div class="results-badges">
+          <span>FAB</span>
+          <span>EPI</span>
+          <span>VM</span>
+          <span>SAW</span>
+          <span>KGD</span>
+          <span>OSAT</span>
+          <span>Total</span>
+        </div>
+      </div>
 
-      <table
-        id="results-table"
-        class="results-table"
-      >
+      <table id="results-table" class="results-table">
         <thead class="results-head">
+          <tr class="results-row results-row--group">
+            <th colspan="3">Meta</th>
+            <th colspan="7">Yield Kette</th>
+          </tr>
           <tr class="results-row results-row--head">
             <th class="col-year">Jahr</th>
             <th class="col-ttnr">TTNR</th>
@@ -83,7 +157,6 @@
           <!-- output.js rendert hier die Zeilen -->
         </tbody>
       </table>
-
     </section>
 
   </div>
