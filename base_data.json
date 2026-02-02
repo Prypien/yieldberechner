@@ -377,84 +377,8 @@
       "static_extra_pct": 0.97,
       "is_dynamic": 0
     },
-    {
-      "plant_id": "RtP1",
-      "tech_id": "RAND-DYN-1",
-      "scenario_id": "",
-      "name": "Random Boost A",
-      "target_field": "FAB",
-      "static_extra_pct": 1.015,
-      "is_dynamic": 1
-    },
-    {
-      "plant_id": "RtP1",
-      "tech_id": "RAND-DYN-2",
-      "scenario_id": "",
-      "name": "Random Boost B",
-      "target_field": "EPI",
-      "static_extra_pct": 1.008,
-      "is_dynamic": 1
-    },
-    {
-      "plant_id": "RseP",
-      "tech_id": "RAND-DYN-3",
-      "scenario_id": "",
-      "name": "Random Boost C",
-      "target_field": "KGD",
-      "static_extra_pct": 1.012,
-      "is_dynamic": 1
-    },
-    {
-      "plant_id": "RseP",
-      "tech_id": "RAND-DYN-4",
-      "scenario_id": "",
-      "name": "Random Boost D",
-      "target_field": "OSAT",
-      "static_extra_pct": 1.006,
-      "is_dynamic": 1
-    }
+    
   ],
-  "technology_years": [
-    {
-      "tech_id": "RAND-DYN-1",
-      "year": 2024,
-      "extra_pct": 1.021
-    },
-    {
-      "tech_id": "RAND-DYN-1",
-      "year": 2025,
-      "extra_pct": 1.018
-    },
-    {
-      "tech_id": "RAND-DYN-2",
-      "year": 2024,
-      "extra_pct": 1.01
-    },
-    {
-      "tech_id": "RAND-DYN-2",
-      "year": 2025,
-      "extra_pct": 1.006
-    },
-    {
-      "tech_id": "RAND-DYN-3",
-      "year": 2024,
-      "extra_pct": 1.014
-    },
-    {
-      "tech_id": "RAND-DYN-3",
-      "year": 2025,
-      "extra_pct": 1.011
-    },
-    {
-      "tech_id": "RAND-DYN-4",
-      "year": 2024,
-      "extra_pct": 1.009
-    },
-    {
-      "tech_id": "RAND-DYN-4",
-      "year": 2025,
-      "extra_pct": 1.005
-    }
-  ],
+  "technology_years": [],
   "chip_type_tech": []
 }
