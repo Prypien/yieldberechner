@@ -1,0 +1,11 @@
+{
+  "name": "yieldberechner-backend",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "express": "^4.19.2"
+  },
+  "scripts": {
+    "dev": "node server.js"
+  }
+}
