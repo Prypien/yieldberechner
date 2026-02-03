@@ -94,6 +94,8 @@ function createCell(value, title) {
   const td = document.createElement("td");
   if (title) {
     td.title = title;
+    td.setAttribute("data-tooltip", title);
+    td.setAttribute("aria-label", title);
     td.classList.add("has-tooltip");
   }
   td.innerHTML = value;

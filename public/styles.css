@@ -459,8 +459,52 @@ a {
 }
 
 .results-table td.has-tooltip {
+  position: relative;
   cursor: help;
   border-bottom: 1px dotted rgba(148, 163, 184, 0.5);
+}
+
+.results-table td.has-tooltip::after,
+.results-table td.has-tooltip::before {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+}
+
+.results-table td.has-tooltip::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 10px);
+  transform: translateX(-50%);
+  background: rgba(15, 23, 42, 0.95);
+  color: #f8fafc;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: pre-line;
+  max-width: 280px;
+  width: max-content;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.28);
+  z-index: 20;
+}
+
+.results-table td.has-tooltip::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 4px);
+  transform: translateX(-50%);
+  border-width: 6px;
+  border-style: solid;
+  border-color: rgba(15, 23, 42, 0.95) transparent transparent transparent;
+  z-index: 19;
+}
+
+.results-table td.has-tooltip:hover::after,
+.results-table td.has-tooltip:hover::before {
+  opacity: 1;
 }
 
 /* Responsive */
