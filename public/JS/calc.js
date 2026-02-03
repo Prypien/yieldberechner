@@ -197,12 +197,15 @@ export function computeResults(data, scenarioId, modelIdOverride = "") {
 
       // Station-Yields pro Kalenderjahr (wenn fehlt: default 1)
       const sy = getScenarioStationYields(index, scenario.scenario_id, year) || {};
-      const yields = {
+      const baseYields = {
         FAB: clamp01(sy.FAB ?? 1),
         EPI: clamp01(sy.EPI ?? 1),
         SAW: clamp01(sy.SAW ?? 1),
         KGD: clamp01(sy.KGD ?? 1),
-        OSAT: clamp01(sy.OSAT ?? 1),
+        OSAT: clamp01(sy.OSAT ?? 1)
+      };
+      const yields = {
+        ...baseYields,
         VM: 1
       };
 
@@ -246,7 +249,15 @@ export function computeResults(data, scenarioId, modelIdOverride = "") {
         die_area_mm2: dieAreaMm2,
         A_cm2,
         D,
+        family_params: {
+          D0: fp.D0,
+          D_in: fp.D_in,
+          t: fp.t,
+          t_start: fp.t_start,
+          t_end: fp.t_end
+        },
         model: { id: model.id, name: model.name, formula: model.formula, uses_params: model.uses_params, params: model.params },
+        baseYields,
         yields,
         total,
         tech: appliedTech
