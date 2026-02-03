@@ -1,9 +1,19 @@
 import { loadData, saveData } from "./data.js";
 import { computeResults } from "./calc.js";
-import { initUI, getSelectedScenarioId, getSelectedModelId, setStatus } from "./ui.js";
+import { initUI, getSelectedScenarioId, getSelectedModelId } from "./ui.js";
 import { renderResultsTable } from "./output.js";
+import { initScenarioEditor, initTechnologyEditor } from "./editor.js";
 
 let data = null;
+
+function updateStatus(text) {
+  const el = document.querySelector("#status") || document.querySelector("[data-role='status']");
+  if (el) {
+    el.textContent = text || "";
+  } else if (text) {
+    console.log("[status]", text);
+  }
+}
 
 function getScenarioIdOrDefault() {
   const selected = getSelectedScenarioId?.();
@@ -15,7 +25,7 @@ function recomputeAndRender() {
   const scenarioId = getScenarioIdOrDefault();
   const table = document.getElementById("results-table");
   if (!table) {
-    setStatus?.("Keine Ergebnis-Tabelle vorhanden.");
+    updateStatus("Keine Ergebnis-Tabelle vorhanden.");
     return;
   }
 
@@ -23,13 +33,13 @@ function recomputeAndRender() {
   const results = computeResults(data, scenarioId, modelId);
 
   renderResultsTable(results, table);
-  setStatus?.(`${results.length} Zeilen berechnet.`);
+  updateStatus(`${results.length} Zeilen berechnet.`);
 }
 
 async function handleSave() {
   try {
     await saveData(data);
-    setStatus?.("Gespeichert.");
+    updateStatus("Gespeichert.");
   } catch (e) {
     console.error(e);
     alert(`Speichern fehlgeschlagen: ${e.message || e}`);
@@ -45,17 +55,30 @@ async function init() {
     return;
   }
 
-  // UI verdrahten: UI darf data mutieren, app.js bleibt “dumm”
-  initUI?.({
-    data,
-    onSave: handleSave,
-    onRecompute: recomputeAndRender,
-    onScenarioChange: recomputeAndRender,
-    onModelChange: recomputeAndRender
-  });
+  const hasResultsTable = Boolean(document.getElementById("results-table"));
+  const hasScenarioEditor = Boolean(document.querySelector("[data-role='family-param-table']"));
+  const hasTechnologyEditor = Boolean(document.querySelector("[data-role='technology-table']"));
 
-  // Erste Berechnung
-  recomputeAndRender();
+  if (hasResultsTable) {
+    // Output Page
+    initUI?.({
+      data,
+      onSave: handleSave,
+      onRecompute: recomputeAndRender,
+      onScenarioChange: recomputeAndRender,
+      onModelChange: recomputeAndRender
+    });
+
+    recomputeAndRender();
+  }
+
+  if (hasScenarioEditor) {
+    initScenarioEditor?.({ data, onSave: handleSave });
+  }
+
+  if (hasTechnologyEditor) {
+    initTechnologyEditor?.({ data, onSave: handleSave });
+  }
 }
 
 init();
