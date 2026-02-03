@@ -458,6 +458,11 @@ a {
   font-weight: 800;
 }
 
+.results-table td.has-tooltip {
+  cursor: help;
+  border-bottom: 1px dotted rgba(148, 163, 184, 0.5);
+}
+
 /* Responsive */
 @media (max-width: 900px) {
   .results-table th,
