@@ -11,72 +11,43 @@
     <header class="app-header">
       <div>
         <h1 class="app-title">Yield Berechner</h1>
-        <p class="app-subtitle">Landingpage für Datenerfassung, Technologien und Output.</p>
+        <p class="app-subtitle">Szenarien, Technologien und Output in einem klaren Workflow.</p>
       </div>
       <div class="app-badge">Yield Suite</div>
     </header>
 
     <nav class="app-nav">
-      <a class="btn btn-primary" href="/scenario-input.html">1) Inputs &amp; Szenario</a>
-      <a class="btn" href="/technologies.html">2) Technologien &amp; Modelle</a>
-      <a class="btn" href="/output.html">3) Output &amp; Tabelle</a>
+      <a class="btn btn-primary" href="/scenario-input.html">Szenario</a>
+      <a class="btn" href="/technologies.html">Technologien</a>
+      <a class="btn" href="/output.html">Output</a>
     </nav>
 
-    <section class="input-panel">
-      <div class="panel-header">
-        <div>
-          <h2>Workflow-Übersicht</h2>
-          <p>Die JSON-Datei ist Single Source of Truth. Diese Seiten spiegeln die Struktur 1:1 wider.</p>
-        </div>
-        <span class="panel-tag">Setup</span>
+    <section class="hero-panel">
+      <div>
+        <h2>Kernfunktionen</h2>
+        <p>Direkt zu den drei Schritten – weniger Ablenkung, mehr Fokus.</p>
       </div>
-
-      <div class="card-grid">
-        <article class="info-card">
-          <h3>1) Szenario-Eingaben</h3>
-          <p>Neues Szenario anlegen, Familienparameter setzen, Typen + Flächen erfassen und Yield-Ketten pflegen.</p>
-          <a class="text-link" href="/scenario-input.html">Zur Eingabe-Seite →</a>
-        </article>
-        <article class="info-card">
-          <h3>2) Technologien &amp; VM-Modelle</h3>
-          <p>Technologien strukturieren, dynamische Yield-Verläufe anlegen und die Modell-Beschreibungen lesen.</p>
-          <a class="text-link" href="/technologies.html">Zur Technologie-Seite →</a>
-        </article>
-        <article class="info-card">
-          <h3>3) Output &amp; Tabelle</h3>
-          <p>Szenario + Yield-Modell auswählen und die berechneten Outputs in der Gesamttabelle prüfen.</p>
-          <a class="text-link" href="/output.html">Zur Output-Seite →</a>
-        </article>
+      <div class="link-grid">
+        <a class="link-tile" href="/scenario-input.html">
+          <span>01</span>
+          <strong>Inputs &amp; Szenario</strong>
+          <small>Familien, Typen, Yields</small>
+        </a>
+        <a class="link-tile" href="/technologies.html">
+          <span>02</span>
+          <strong>Technologien</strong>
+          <small>Setups &amp; Modelle</small>
+        </a>
+        <a class="link-tile" href="/output.html">
+          <span>03</span>
+          <strong>Output</strong>
+          <small>Berechnung &amp; Tabelle</small>
+        </a>
       </div>
     </section>
 
-    <section class="input-panel">
-      <div class="panel-header">
-        <div>
-          <h2>Datenlogik (JSON)</h2>
-          <p>Familien, Szenarien, Technologien und Typen sind klar verknüpft – hier die Kurzlogik.</p>
-        </div>
-        <span class="panel-tag">SSOT</span>
-      </div>
-
-      <div class="form-grid">
-        <div class="info-card">
-          <h3>Families ➜ Szenario-Parameter</h3>
-          <p>Familien definieren Grunddaten. Szenarien überschreiben D0/D_in/t/t_start/t_end pro Familie.</p>
-        </div>
-        <div class="info-card">
-          <h3>Chip Types ➜ Technologien</h3>
-          <p>Typen hängen an einer Familie, haben Fläche + Technologien. Technologien wirken auf Ziel-Stations-Yields.</p>
-        </div>
-        <div class="info-card">
-          <h3>Scenario Yields</h3>
-          <p>FAB/EPI/SAW/KGD/OSAT werden pro Kalenderjahr gepflegt, VM wird aus dem Modell gerechnet.</p>
-        </div>
-        <div class="info-card">
-          <h3>VM Yield Models</h3>
-          <p>Poisson, Murphy, Seeds, Bose-Einstein, NegBin – Modellauswahl steuert die VM-Berechnung.</p>
-        </div>
-      </div>
+    <section class="note-panel">
+      <p><strong>Hinweis:</strong> Alle Daten werden als JSON gespeichert und sofort wiederverwendet.</p>
     </section>
   </div>
 </body>
