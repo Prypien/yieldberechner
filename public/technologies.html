@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <title>Yield Berechner · Technologien</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="app-header">
+      <div>
+        <h1 class="app-title">Technologien &amp; Modelle</h1>
+        <p class="app-subtitle">Technologie-Setups pflegen und die VM-Modelle mit Beschreibungen sehen.</p>
+      </div>
+      <div class="app-badge">Technology Page</div>
+    </header>
+
+    <nav class="app-nav">
+      <a class="btn" href="/index.html">← Landing</a>
+      <a class="btn" href="/scenario-input.html">Szenario-Inputs</a>
+      <a class="btn" href="/output.html">Output</a>
+    </nav>
+
+    <section class="input-panel">
+      <div class="panel-header">
+        <div>
+          <h2>1) Technologien</h2>
+          <p>Technologien können dynamisch oder statisch sein und wirken auf ein Ziel-Feld (z.B. SAW).</p>
+        </div>
+        <span class="panel-tag">Technologies</span>
+      </div>
+
+      <div class="table-wrap">
+        <table class="data-table" data-role="technology-table">
+          <thead>
+            <tr>
+              <th>Tech-ID</th>
+              <th>Name</th>
+              <th>Ziel-Feld</th>
+              <th>Dynamic?</th>
+              <th>Static Yield</th>
+              <th>Aktion</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><input type="text" placeholder="TECH_SAKASA" /></td>
+              <td><input type="text" placeholder="Sakasa" /></td>
+              <td><input type="text" placeholder="SAW" /></td>
+              <td>
+                <select class="control-select">
+                  <option value="1">Ja</option>
+                  <option value="0">Nein</option>
+                </select>
+              </td>
+              <td><input type="number" step="0.001" placeholder="0.99" /></td>
+              <td><button class="btn btn-secondary" type="button">Entfernen</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="control-actions">
+        <button class="btn" type="button" data-action="technology-add">Technologie hinzufügen</button>
+      </div>
+    </section>
+
+    <section class="input-panel">
+      <div class="panel-header">
+        <div>
+          <h2>2) Dynamische Technologie-Yields</h2>
+          <p>Für dynamische Technologien die Yield-Kurve (relativ nach JahrIndex) pflegen.</p>
+        </div>
+        <span class="panel-tag">Tech Yields</span>
+      </div>
+
+      <div class="table-wrap">
+        <table class="data-table" data-role="technology-yield-table">
+          <thead>
+            <tr>
+              <th>Tech-ID</th>
+              <th>Relatives Jahr</th>
+              <th>Yield</th>
+              <th>Aktion</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><input type="text" placeholder="TECH_SAKASA" /></td>
+              <td><input type="number" step="1" placeholder="1" /></td>
+              <td><input type="number" step="0.001" placeholder="0.98" /></td>
+              <td><button class="btn btn-secondary" type="button">Entfernen</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="control-actions">
+        <button class="btn" type="button" data-action="technology-yield-add">Yield-Zeile hinzufügen</button>
+      </div>
+    </section>
+
+    <section class="input-panel">
+      <div class="panel-header">
+        <div>
+          <h2>3) VM Yield Modelle</h2>
+          <p>Beschreibung der Modelle inkl. Formel- und Parameterhinweis (kein Editieren).</p>
+        </div>
+        <span class="panel-tag">VM Models</span>
+      </div>
+
+      <div class="card-grid" data-role="vm-model-list">
+        <article class="info-card">
+          <h3>Poisson (VM)</h3>
+          <p><strong>Formel:</strong> VM = exp(-D * A)</p>
+          <p><strong>Beschreibung:</strong> Poisson-Modell. Verwendet keine zusätzlichen Parameter.</p>
+        </article>
+        <article class="info-card">
+          <h3>Murphy (VM)</h3>
+          <p><strong>Formel:</strong> VM = (1 - exp(-D * A)) / (D * A)</p>
+          <p><strong>Beschreibung:</strong> Glättet Poisson bei kleinen Flächen.</p>
+        </article>
+        <article class="info-card">
+          <h3>Seeds (VM)</h3>
+          <p><strong>Formel:</strong> VM = exp(-sqrt(D * A))</p>
+          <p><strong>Beschreibung:</strong> Schwächere Flächenabhängigkeit.</p>
+        </article>
+        <article class="info-card">
+          <h3>Bose–Einstein (VM)</h3>
+          <p><strong>Formel:</strong> VM = (1 / (1 + D * A)) ^ n</p>
+          <p><strong>Beschreibung:</strong> Exponent n steuert Cluster-Effekt.</p>
+        </article>
+        <article class="info-card">
+          <h3>Negative Binomial (VM)</h3>
+          <p><strong>Formel:</strong> VM = (1 + (D * A) / alpha) ^ (-alpha)</p>
+          <p><strong>Beschreibung:</strong> alpha steuert Defekt-Clusterung.</p>
+        </article>
+      </div>
+    </section>
+  </div>
+</body>
+</html>

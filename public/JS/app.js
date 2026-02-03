@@ -1,6 +1,6 @@
 import { loadData, saveData } from "./data.js";
 import { computeResults } from "./calc.js";
-import { initUI, getSelectedScenarioId, setStatus } from "./ui.js";
+import { initUI, getSelectedScenarioId, getSelectedModelId, setStatus } from "./ui.js";
 import { renderResultsTable } from "./output.js";
 
 let data = null;
@@ -13,13 +13,14 @@ function getScenarioIdOrDefault() {
 
 function recomputeAndRender() {
   const scenarioId = getScenarioIdOrDefault();
-  const results = computeResults(data, scenarioId);
-
   const table = document.getElementById("results-table");
   if (!table) {
-    console.warn("Missing #results-table in DOM");
+    setStatus?.("Keine Ergebnis-Tabelle vorhanden.");
     return;
   }
+
+  const modelId = getSelectedModelId?.();
+  const results = computeResults(data, scenarioId, modelId);
 
   renderResultsTable(results, table);
   setStatus?.(`${results.length} Zeilen berechnet.`);
@@ -49,7 +50,8 @@ async function init() {
     data,
     onSave: handleSave,
     onRecompute: recomputeAndRender,
-    onScenarioChange: recomputeAndRender
+    onScenarioChange: recomputeAndRender,
+    onModelChange: recomputeAndRender
   });
 
   // Erste Berechnung

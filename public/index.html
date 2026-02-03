@@ -2,168 +2,82 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
-  <title>Yield Berechner</title>
+  <title>Yield Berechner · Landing</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="/styles.css" />
 </head>
-
 <body>
-
-  <!-- App Wrapper -->
   <div class="app">
-
-    <!-- Header -->
     <header class="app-header">
       <div>
         <h1 class="app-title">Yield Berechner</h1>
-        <p class="app-subtitle">Alle Szenarien, Eingaben und Ergebnisse in einer klaren Übersicht.</p>
+        <p class="app-subtitle">Landingpage für Datenerfassung, Technologien und Output.</p>
       </div>
       <div class="app-badge">Yield Suite</div>
     </header>
 
-    <!-- Inputs / Setup -->
+    <nav class="app-nav">
+      <a class="btn btn-primary" href="/scenario-input.html">1) Inputs &amp; Szenario</a>
+      <a class="btn" href="/technologies.html">2) Technologien &amp; Modelle</a>
+      <a class="btn" href="/output.html">3) Output &amp; Tabelle</a>
+    </nav>
+
     <section class="input-panel">
       <div class="panel-header">
         <div>
-          <h2>Inputs &amp; Szenario-Setup</h2>
-          <p>Lege Szenarien an, pflege die Yield-Werte und speichere deine Konfigurationen.</p>
+          <h2>Workflow-Übersicht</h2>
+          <p>Die JSON-Datei ist Single Source of Truth. Diese Seiten spiegeln die Struktur 1:1 wider.</p>
         </div>
-        <span class="panel-tag">Status live</span>
+        <span class="panel-tag">Setup</span>
       </div>
 
-      <div class="tabs">
-        <input type="radio" name="tabs" id="tab-scenario" checked />
-        <input type="radio" name="tabs" id="tab-yields" />
-        <input type="radio" name="tabs" id="tab-notes" />
-
-        <div class="tab-labels">
-          <label for="tab-scenario">Szenario</label>
-          <label for="tab-yields">Yield-Eingaben</label>
-          <label for="tab-notes">Notizen</label>
-        </div>
-
-        <div class="tab-panels">
-          <div class="tab-panel" data-tab="scenario">
-            <div class="form-grid">
-              <div class="form-field">
-                <label for="scenario-select">Szenario auswählen</label>
-                <select id="scenario-select" class="control-select"></select>
-              </div>
-              <div class="form-field">
-                <label for="scenario-name">Szenario-Name</label>
-                <input id="scenario-name" type="text" placeholder="z.B. Q4 Ramp-up" />
-              </div>
-              <div class="form-field">
-                <label for="scenario-year">Planungsjahr</label>
-                <input id="scenario-year" type="text" placeholder="2025" />
-              </div>
-              <div class="form-field">
-                <label for="scenario-owner">Verantwortlich</label>
-                <input id="scenario-owner" type="text" placeholder="Team / Owner" />
-              </div>
-            </div>
-
-            <div class="control-actions">
-              <button id="run-calc" class="btn btn-primary" type="button">Berechnen</button>
-              <button id="save-data" class="btn btn-secondary" type="button">Speichern</button>
-            </div>
-
-            <div class="status">
-              <div id="status" class="status-text"></div>
-            </div>
-          </div>
-
-          <div class="tab-panel" data-tab="yields">
-            <div class="form-grid yield-grid">
-              <div class="form-field">
-                <label for="input-fab">FAB Yield</label>
-                <input id="input-fab" type="number" step="0.01" placeholder="z.B. 96.50%" />
-              </div>
-              <div class="form-field">
-                <label for="input-epi">EPI Yield</label>
-                <input id="input-epi" type="number" step="0.01" placeholder="z.B. 98.10%" />
-              </div>
-              <div class="form-field">
-                <label for="input-vm">VM Yield</label>
-                <input id="input-vm" type="number" step="0.01" placeholder="z.B. 97.40%" />
-              </div>
-              <div class="form-field">
-                <label for="input-saw">SAW Yield</label>
-                <input id="input-saw" type="number" step="0.01" placeholder="z.B. 99.00%" />
-              </div>
-              <div class="form-field">
-                <label for="input-kgd">KGD Yield</label>
-                <input id="input-kgd" type="number" step="0.01" placeholder="z.B. 98.70%" />
-              </div>
-              <div class="form-field">
-                <label for="input-osat">OSAT Yield</label>
-                <input id="input-osat" type="number" step="0.01" placeholder="z.B. 99.20%" />
-              </div>
-              <div class="form-field form-field--wide">
-                <label for="input-total">Total Yield (Auto)</label>
-                <input id="input-total" type="text" placeholder="berechnet nach FAB ➜ Total" disabled />
-              </div>
-            </div>
-          </div>
-
-          <div class="tab-panel" data-tab="notes">
-            <div class="form-field form-field--wide">
-              <label for="scenario-notes">Ergänzende Notizen</label>
-              <textarea id="scenario-notes" rows="6" placeholder="Besondere Annahmen, Yield-Hebel, Risiken ..."></textarea>
-            </div>
-          </div>
-        </div>
+      <div class="card-grid">
+        <article class="info-card">
+          <h3>1) Szenario-Eingaben</h3>
+          <p>Neues Szenario anlegen, Familienparameter setzen, Typen + Flächen erfassen und Yield-Ketten pflegen.</p>
+          <a class="text-link" href="/scenario-input.html">Zur Eingabe-Seite →</a>
+        </article>
+        <article class="info-card">
+          <h3>2) Technologien &amp; VM-Modelle</h3>
+          <p>Technologien strukturieren, dynamische Yield-Verläufe anlegen und die Modell-Beschreibungen lesen.</p>
+          <a class="text-link" href="/technologies.html">Zur Technologie-Seite →</a>
+        </article>
+        <article class="info-card">
+          <h3>3) Output &amp; Tabelle</h3>
+          <p>Szenario + Yield-Modell auswählen und die berechneten Outputs in der Gesamttabelle prüfen.</p>
+          <a class="text-link" href="/output.html">Zur Output-Seite →</a>
+        </article>
       </div>
     </section>
 
-    <!-- Output / Results -->
-    <section class="results">
-      <div class="results-header">
+    <section class="input-panel">
+      <div class="panel-header">
         <div>
-          <h2>Yield-Tabelle (FAB ➜ Total Yield)</h2>
-          <p>Übersicht aller berechneten Werte entlang der Prozesskette.</p>
+          <h2>Datenlogik (JSON)</h2>
+          <p>Familien, Szenarien, Technologien und Typen sind klar verknüpft – hier die Kurzlogik.</p>
         </div>
-        <div class="results-badges">
-          <span>FAB</span>
-          <span>EPI</span>
-          <span>VM</span>
-          <span>SAW</span>
-          <span>KGD</span>
-          <span>OSAT</span>
-          <span>Total</span>
-        </div>
+        <span class="panel-tag">SSOT</span>
       </div>
 
-      <table id="results-table" class="results-table">
-        <thead class="results-head">
-          <tr class="results-row results-row--group">
-            <th colspan="3">Meta</th>
-            <th colspan="7">Yield Kette</th>
-          </tr>
-          <tr class="results-row results-row--head">
-            <th class="col-year">Jahr</th>
-            <th class="col-ttnr">TTNR</th>
-            <th class="col-name">Name</th>
-            <th class="col-fab">FAB</th>
-            <th class="col-epi">EPI</th>
-            <th class="col-vm">VM</th>
-            <th class="col-saw">SAW</th>
-            <th class="col-kgd">KGD</th>
-            <th class="col-osat">OSAT</th>
-            <th class="col-total">Total</th>
-          </tr>
-        </thead>
-
-        <tbody class="results-body">
-          <!-- output.js rendert hier die Zeilen -->
-        </tbody>
-      </table>
+      <div class="form-grid">
+        <div class="info-card">
+          <h3>Families ➜ Szenario-Parameter</h3>
+          <p>Familien definieren Grunddaten. Szenarien überschreiben D0/D_in/t/t_start/t_end pro Familie.</p>
+        </div>
+        <div class="info-card">
+          <h3>Chip Types ➜ Technologien</h3>
+          <p>Typen hängen an einer Familie, haben Fläche + Technologien. Technologien wirken auf Ziel-Stations-Yields.</p>
+        </div>
+        <div class="info-card">
+          <h3>Scenario Yields</h3>
+          <p>FAB/EPI/SAW/KGD/OSAT werden pro Kalenderjahr gepflegt, VM wird aus dem Modell gerechnet.</p>
+        </div>
+        <div class="info-card">
+          <h3>VM Yield Models</h3>
+          <p>Poisson, Murphy, Seeds, Bose-Einstein, NegBin – Modellauswahl steuert die VM-Berechnung.</p>
+        </div>
+      </div>
     </section>
-
   </div>
-
-  <!-- App Entry -->
-  <script type="module" src="/JS/app.js"></script>
-
 </body>
 </html>
