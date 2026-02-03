@@ -159,7 +159,7 @@ export function getTechnologyFactor(index, tech, relYear) {
  * Output-Zeile enthält:
  * - calendar year, yearIndex (relativ 1..N), chip, yields, total, VM inputs (optional)
  */
-export function computeResults(data, scenarioId) {
+export function computeResults(data, scenarioId, modelIdOverride = "") {
   const index = buildIndex(data);
 
   const scenario = getScenario(index, data, scenarioId);
@@ -169,8 +169,10 @@ export function computeResults(data, scenarioId) {
   const endYear = Number(scenario.end_year);
   if (!Number.isFinite(startYear) || !Number.isFinite(endYear) || startYear > endYear) return [];
 
-  const modelId = scenario.selected_vm_yield_model_id;
-  const model = index.modelById.get(modelId);
+  const modelId = modelIdOverride || scenario.selected_vm_yield_model_id;
+  const model =
+    index.modelById.get(modelId) ||
+    index.modelById.get(scenario.selected_vm_yield_model_id);
   if (!model) return []; // oder throw new Error(...) – je nachdem wie streng du sein willst
 
   const out = [];

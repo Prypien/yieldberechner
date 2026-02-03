@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <title>Yield Berechner · Szenario-Inputs</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="app-header">
+      <div>
+        <h1 class="app-title">Szenario-Inputs</h1>
+        <p class="app-subtitle">Lege Szenarien an und pflege alle Daten, die nicht direkt aus Families kommen.</p>
+      </div>
+      <div class="app-badge">Input Page</div>
+    </header>
+
+    <nav class="app-nav">
+      <a class="btn" href="/index.html">← Landing</a>
+      <a class="btn" href="/technologies.html">Technologien</a>
+      <a class="btn" href="/output.html">Output</a>
+    </nav>
+
+    <section class="input-panel">
+      <div class="panel-header">
+        <div>
+          <h2>1) Szenario anlegen</h2>
+          <p>Grunddaten für das Szenario und die VM-Modellauswahl (Default pro Szenario).</p>
+        </div>
+        <span class="panel-tag">Scenario</span>
+      </div>
+
+      <div class="form-grid">
+        <div class="form-field">
+          <label for="scenario-select">Szenario auswählen</label>
+          <select id="scenario-select" class="control-select"></select>
+        </div>
+        <div class="form-field">
+          <label for="scenario-id">Scenario-ID</label>
+          <input id="scenario-id" type="text" placeholder="z.B. Baseline" />
+        </div>
+        <div class="form-field">
+          <label for="scenario-name">Szenario-Name</label>
+          <input id="scenario-name" type="text" placeholder="z.B. Q4 Ramp-up" />
+        </div>
+        <div class="form-field">
+          <label for="scenario-start">Startjahr</label>
+          <input id="scenario-start" type="number" placeholder="2025" />
+        </div>
+        <div class="form-field">
+          <label for="scenario-end">Endjahr</label>
+          <input id="scenario-end" type="number" placeholder="2030" />
+        </div>
+        <div class="form-field">
+          <label for="scenario-model">VM Yield Modell (Default)</label>
+          <select id="scenario-model" class="control-select" data-role="model-select"></select>
+        </div>
+      </div>
+
+      <div class="control-actions">
+        <button class="btn btn-primary" type="button" data-action="scenario-add">Szenario hinzufügen</button>
+        <button id="save-data" class="btn btn-secondary" type="button">Daten speichern</button>
+      </div>
+
+      <div class="status">
+        <div id="status" class="status-text"></div>
+      </div>
+    </section>
+
+    <section class="input-panel">
+      <div class="panel-header">
+        <div>
+          <h2>2) Familienparameter je Szenario</h2>
+          <p>D0/D_in/t/t_start/t_end setzen (pro Family + Szenario).</p>
+        </div>
+        <span class="panel-tag">Family Params</span>
+      </div>
+
+      <div class="table-wrap">
+        <table class="data-table" data-role="family-param-table">
+          <thead>
+            <tr>
+              <th>Family</th>
+              <th>D0</th>
+              <th>D_in</th>
+              <th>t</th>
+              <th>t_start</th>
+              <th>t_end</th>
+              <th>Aktion</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><input type="text" placeholder="FAM_28" /></td>
+              <td><input type="number" step="0.01" placeholder="0.25" /></td>
+              <td><input type="number" step="0.01" placeholder="0.06" /></td>
+              <td><input type="number" step="0.01" placeholder="0.18" /></td>
+              <td><input type="number" step="1" placeholder="2" /></td>
+              <td><input type="number" step="1" placeholder="5" /></td>
+              <td><button class="btn btn-secondary" type="button">Entfernen</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="control-actions">
+        <button class="btn" type="button" data-action="family-param-add">Family-Parameter hinzufügen</button>
+      </div>
+    </section>
+
+    <section class="input-panel">
+      <div class="panel-header">
+        <div>
+          <h2>3) Szenario-Yields pro Jahr</h2>
+          <p>FAB/EPI/SAW/KGD/OSAT pro Kalenderjahr. VM kommt aus dem Modell.</p>
+        </div>
+        <span class="panel-tag">Scenario Yields</span>
+      </div>
+
+      <div class="table-wrap">
+        <table class="data-table" data-role="scenario-yield-table">
+          <thead>
+            <tr>
+              <th>Jahr</th>
+              <th>FAB</th>
+              <th>EPI</th>
+              <th>SAW</th>
+              <th>KGD</th>
+              <th>OSAT</th>
+              <th>Aktion</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><input type="number" placeholder="2025" /></td>
+              <td><input type="number" step="0.001" placeholder="0.93" /></td>
+              <td><input type="number" step="0.001" placeholder="0.92" /></td>
+              <td><input type="number" step="0.001" placeholder="0.94" /></td>
+              <td><input type="number" step="0.001" placeholder="0.90" /></td>
+              <td><input type="number" step="0.001" placeholder="0.92" /></td>
+              <td><button class="btn btn-secondary" type="button">Entfernen</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="control-actions">
+        <button class="btn" type="button" data-action="scenario-yield-add">Jahr hinzufügen</button>
+      </div>
+    </section>
+
+    <section class="input-panel">
+      <div class="panel-header">
+        <div>
+          <h2>4) Chip-Typen &amp; Technologien</h2>
+          <p>Alle Typen, ihre Family, Fläche, Technologien und spezielle Startjahre pflegen.</p>
+        </div>
+        <span class="panel-tag">Chip Types</span>
+      </div>
+
+      <div class="table-wrap">
+        <table class="data-table" data-role="chip-type-table">
+          <thead>
+            <tr>
+              <th>TTNR</th>
+              <th>Name</th>
+              <th>Family</th>
+              <th>Fläche (mm²)</th>
+              <th>Package</th>
+              <th>Startjahr (optional)</th>
+              <th>Technologien (IDs)</th>
+              <th>Aktion</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><input type="text" placeholder="1111111111" /></td>
+              <td><input type="text" placeholder="Example Chip A" /></td>
+              <td><input type="text" placeholder="FAM_28" /></td>
+              <td><input type="number" step="0.1" placeholder="50" /></td>
+              <td><input type="text" placeholder="QFN" /></td>
+              <td><input type="number" step="1" placeholder="2026" /></td>
+              <td><input type="text" placeholder="TECH_SAKASA, TECH_OSAT_PLUS" /></td>
+              <td><button class="btn btn-secondary" type="button">Entfernen</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="control-actions">
+        <button class="btn" type="button" data-action="chip-type-add">Typ hinzufügen</button>
+      </div>
+    </section>
+  </div>
+
+  <script type="module" src="/JS/app.js"></script>
+</body>
+</html>

@@ -12,9 +12,11 @@
  */
 
 let selectedScenarioId = "";
+let selectedModelId = "";
 
 let els = {
   scenarioSelect: null,
+  modelSelect: null,
   saveButton: null,
   recomputeButton: null,
   status: null
@@ -59,6 +61,38 @@ function setScenarioOptions(data) {
   selectedScenarioId = select.value || scenarios[0].scenario_id;
 }
 
+function setModelOptions(data, scenarioId) {
+  const select = els.modelSelect;
+  if (!select) return;
+
+  const models = Array.isArray(data?.vm_yield_models) ? data.vm_yield_models : [];
+  select.innerHTML = "";
+
+  if (models.length === 0) {
+    const opt = document.createElement("option");
+    opt.value = "";
+    opt.textContent = "Keine Modelle";
+    opt.disabled = true;
+    opt.selected = true;
+    select.appendChild(opt);
+    selectedModelId = "";
+    return;
+  }
+
+  for (const model of models) {
+    const opt = document.createElement("option");
+    opt.value = model.id;
+    opt.textContent = model.name || model.id;
+    select.appendChild(opt);
+  }
+
+  const scenario = (data?.scenarios || []).find((s) => s.scenario_id === scenarioId);
+  const scenarioModelId = scenario?.selected_vm_yield_model_id || models[0].id;
+  const wanted = selectedModelId || scenarioModelId;
+  select.value = wanted;
+  selectedModelId = select.value || scenarioModelId;
+}
+
 export function setStatus(text) {
   if (els.status) {
     els.status.textContent = text || "";
@@ -73,12 +107,29 @@ export function getSelectedScenarioId() {
   return selectedScenarioId || "";
 }
 
-export function initUI({ data, onSave, onRecompute, onScenarioChange } = {}) {
+export function getSelectedModelId() {
+  if (els.modelSelect?.value) return els.modelSelect.value;
+  return selectedModelId || "";
+}
+
+export function initUI({
+  data,
+  onSave,
+  onRecompute,
+  onScenarioChange,
+  onModelChange
+} = {}) {
   // Versuche mehrere mögliche IDs/Klassen, damit es mit deinem aktuellen HTML schon läuft.
   els.scenarioSelect = $([
     "#scenario-select",
     "[data-role='scenario-select']",
     "select[name='scenario']"
+  ]);
+
+  els.modelSelect = $([
+    "#model-select",
+    "[data-role='model-select']",
+    "select[name='vm-model']"
   ]);
 
   els.saveButton = $([
@@ -102,12 +153,22 @@ export function initUI({ data, onSave, onRecompute, onScenarioChange } = {}) {
 
   // Dropdown befüllen
   setScenarioOptions(data);
+  setModelOptions(data, selectedScenarioId);
 
   // Szenario-Wechsel -> recompute
   if (els.scenarioSelect) {
     els.scenarioSelect.addEventListener("change", () => {
       selectedScenarioId = els.scenarioSelect.value || "";
+      setModelOptions(data, selectedScenarioId);
       if (typeof onScenarioChange === "function") onScenarioChange(selectedScenarioId);
+      else if (typeof onRecompute === "function") onRecompute();
+    });
+  }
+
+  if (els.modelSelect) {
+    els.modelSelect.addEventListener("change", () => {
+      selectedModelId = els.modelSelect.value || "";
+      if (typeof onModelChange === "function") onModelChange(selectedModelId);
       else if (typeof onRecompute === "function") onRecompute();
     });
   }
