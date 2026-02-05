@@ -17,6 +17,7 @@ let selectedModelId = "";
 let els = {
   scenarioSelect: null,
   modelSelect: null,
+  scenarioChips: null,
   saveButton: null,
   recomputeButton: null,
   status: null
@@ -45,6 +46,7 @@ function setScenarioOptions(data) {
     opt.selected = true;
     select.appendChild(opt);
     selectedScenarioId = "";
+    renderScenarioChips(data);
     return;
   }
 
@@ -59,6 +61,8 @@ function setScenarioOptions(data) {
   const wanted = selectedScenarioId || scenarios[0].scenario_id;
   select.value = wanted;
   selectedScenarioId = select.value || scenarios[0].scenario_id;
+
+  renderScenarioChips(data);
 }
 
 function setModelOptions(data, scenarioId) {
@@ -91,6 +95,30 @@ function setModelOptions(data, scenarioId) {
   const wanted = selectedModelId || scenarioModelId;
   select.value = wanted;
   selectedModelId = select.value || scenarioModelId;
+}
+
+function renderScenarioChips(data) {
+  const wrap = els.scenarioChips;
+  if (!wrap) return;
+
+  const scenarios = Array.isArray(data?.scenarios) ? data.scenarios : [];
+  wrap.innerHTML = "";
+
+  if (!scenarios.length) {
+    const empty = document.createElement("div");
+    empty.className = "scenario-chip";
+    empty.textContent = "Keine Szenarien";
+    wrap.appendChild(empty);
+    return;
+  }
+
+  for (const s of scenarios) {
+    const chip = document.createElement("span");
+    chip.className = "scenario-chip" + (s.scenario_id === selectedScenarioId ? " is-active" : "");
+    chip.textContent = s.name || s.scenario_id;
+    chip.title = s.scenario_id;
+    wrap.appendChild(chip);
+  }
 }
 
 export function setStatus(text) {
@@ -132,6 +160,10 @@ export function initUI({
     "select[name='vm-model']"
   ]);
 
+  els.scenarioChips = $([
+    "[data-role='scenario-chips']"
+  ]);
+
   els.saveButton = $([
     "#save-data",
     "#btn-save",
@@ -160,6 +192,7 @@ export function initUI({
     els.scenarioSelect.addEventListener("change", () => {
       selectedScenarioId = els.scenarioSelect.value || "";
       setModelOptions(data, selectedScenarioId);
+      renderScenarioChips(data);
       if (typeof onScenarioChange === "function") onScenarioChange(selectedScenarioId);
       else if (typeof onRecompute === "function") onRecompute();
     });

@@ -25,18 +25,23 @@
     <section class="input-panel">
       <div class="panel-header">
         <div>
-          <h2>Szenario</h2>
-          <p>Basisdaten und Default-Modell.</p>
+          <h2>Szenarien</h2>
+          <p>Neue Szenarien anlegen und aktives Szenario auswählen.</p>
         </div>
+        <div class="panel-tag" data-role="active-scenario-label">Aktiv: –</div>
       </div>
 
       <div class="form-grid">
         <div class="form-field">
-          <label for="scenario-select">Szenario auswählen</label>
+          <label for="scenario-select">Aktives Szenario</label>
           <select id="scenario-select" class="control-select"></select>
         </div>
         <div class="form-field">
-          <label for="scenario-id">Scenario-ID</label>
+          <label for="scenario-model">VM Yield Modell (Default)</label>
+          <select id="scenario-model" class="control-select" data-role="model-select"></select>
+        </div>
+        <div class="form-field">
+          <label for="scenario-id">Scenario-ID (editierbar)</label>
           <input id="scenario-id" type="text" placeholder="z.B. Baseline" />
         </div>
         <div class="form-field">
@@ -51,16 +56,14 @@
           <label for="scenario-end">Endjahr</label>
           <input id="scenario-end" type="number" placeholder="2030" />
         </div>
-        <div class="form-field">
-          <label for="scenario-model">VM Yield Modell (Default)</label>
-          <select id="scenario-model" class="control-select" data-role="model-select"></select>
-        </div>
       </div>
 
       <div class="control-actions">
-        <button class="btn btn-primary" type="button" data-action="scenario-add">Szenario hinzufügen</button>
+        <button class="btn btn-primary" type="button" data-action="scenario-open">Neues Szenario</button>
         <button id="save-data" class="btn btn-secondary" type="button">Daten speichern</button>
       </div>
+
+      <div class="scenario-grid" data-role="scenario-list"></div>
 
       <div class="status">
         <div id="status" class="status-text"></div>
@@ -70,9 +73,43 @@
     <section class="input-panel">
       <div class="panel-header">
         <div>
+          <h2>Familien</h2>
+          <p>Globale Families (nicht szenario-spezifisch).</p>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table class="data-table" data-role="family-table">
+          <thead>
+            <tr>
+              <th>Family-ID</th>
+              <th>Name</th>
+              <th>Beschreibung</th>
+              <th>Aktion</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><input type="text" placeholder="FAM_28" /></td>
+              <td><input type="text" placeholder="28nm" /></td>
+              <td><input type="text" placeholder="z.B. 28nm technology family" /></td>
+              <td><button class="btn btn-secondary" type="button">Entfernen</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="control-actions">
+        <button class="btn" type="button" data-action="family-add">Family hinzufügen</button>
+      </div>
+    </section>
+
+    <section class="input-panel">
+      <div class="panel-header">
+        <div>
           <h2>Familienparameter</h2>
           <p>D0, D_in, t, t_start, t_end pro Family.</p>
         </div>
+        <div class="panel-tag" data-role="active-scenario-label">Aktiv: –</div>
       </div>
 
       <div class="table-wrap">
@@ -112,6 +149,7 @@
           <h2>Szenario-Yields</h2>
           <p>FAB bis OSAT je Jahr.</p>
         </div>
+        <div class="panel-tag" data-role="active-scenario-label">Aktiv: –</div>
       </div>
 
       <div class="table-wrap">
@@ -185,6 +223,47 @@
         <button class="btn" type="button" data-action="chip-type-add">Typ hinzufügen</button>
       </div>
     </section>
+  </div>
+
+  <div class="modal" data-role="scenario-modal" aria-hidden="true">
+    <div class="modal-backdrop" data-action="scenario-cancel"></div>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="scenario-modal-title">
+      <div class="modal-header">
+        <div>
+          <h2 id="scenario-modal-title">Neues Szenario</h2>
+          <p>Lege ein neues Szenario an und wähle danach das aktive Szenario oben aus.</p>
+        </div>
+        <button class="btn btn-secondary" type="button" data-action="scenario-cancel">Schließen</button>
+      </div>
+
+      <div class="form-grid">
+        <div class="form-field">
+          <label for="scenario-create-id">Scenario-ID</label>
+          <input id="scenario-create-id" type="text" placeholder="z.B. Baseline_2" />
+        </div>
+        <div class="form-field">
+          <label for="scenario-create-name">Szenario-Name</label>
+          <input id="scenario-create-name" type="text" placeholder="z.B. Ramp-up 2027" />
+        </div>
+        <div class="form-field">
+          <label for="scenario-create-start">Startjahr</label>
+          <input id="scenario-create-start" type="number" placeholder="2025" />
+        </div>
+        <div class="form-field">
+          <label for="scenario-create-end">Endjahr</label>
+          <input id="scenario-create-end" type="number" placeholder="2030" />
+        </div>
+        <div class="form-field form-field--wide">
+          <label for="scenario-create-model">VM Yield Modell (Default)</label>
+          <select id="scenario-create-model" class="control-select"></select>
+        </div>
+      </div>
+
+      <div class="control-actions">
+        <button class="btn btn-primary" type="button" data-action="scenario-create">Szenario anlegen</button>
+        <button class="btn" type="button" data-action="scenario-cancel">Abbrechen</button>
+      </div>
+    </div>
   </div>
 
   <script type="module" src="/JS/app.js"></script>

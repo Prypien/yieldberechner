@@ -156,14 +156,17 @@ function renderModelOptions(select, models, selectedId) {
 }
 
 function ensureFamilyExists(data, familyId) {
-  if (!familyId) return;
+  if (!familyId) return null;
   const families = ensureArray(data, "families");
-  if (families.some((f) => f.family_id === familyId)) return;
-  families.push({
+  const existing = families.find((f) => f.family_id === familyId);
+  if (existing) return existing;
+  const row = {
     family_id: familyId,
     name: familyId,
     description: ""
-  });
+  };
+  families.push(row);
+  return row;
 }
 
 function findDuplicate(list, item, predicate) {
@@ -182,6 +185,7 @@ function generateUniqueId(prefix, existingIds) {
 
 export function initScenarioEditor({ data, onSave } = {}) {
   const scenarios = ensureArray(data, "scenarios");
+  const families = ensureArray(data, "families");
   const familyParams = ensureArray(data, "scenario_family_params");
   const scenarioYields = ensureArray(data, "scenario_yields");
   const chipTypes = ensureArray(data, "chip_types");
@@ -195,18 +199,33 @@ export function initScenarioEditor({ data, onSave } = {}) {
   const scenarioStartInput = document.querySelector("#scenario-start");
   const scenarioEndInput = document.querySelector("#scenario-end");
   const scenarioModelSelect = document.querySelector("#scenario-model");
+  const scenarioList = document.querySelector("[data-role='scenario-list']");
+  const activeScenarioLabels = Array.from(
+    document.querySelectorAll("[data-role='active-scenario-label']")
+  );
 
-  const scenarioAddBtn = document.querySelector("[data-action='scenario-add']");
+  const scenarioOpenBtn = document.querySelector("[data-action='scenario-open']");
   const familyAddBtn = document.querySelector("[data-action='family-param-add']");
   const yieldAddBtn = document.querySelector("[data-action='scenario-yield-add']");
   const chipAddBtn = document.querySelector("[data-action='chip-type-add']");
+  const familyMasterAddBtn = document.querySelector("[data-action='family-add']");
   const saveBtn = document.querySelector("#save-data");
 
-  const familyTable = document.querySelector("[data-role='family-param-table']");
+  const familyParamTable = document.querySelector("[data-role='family-param-table']");
   const yieldTable = document.querySelector("[data-role='scenario-yield-table']");
   const chipTable = document.querySelector("[data-role='chip-type-table']");
+  const familyMasterTable = document.querySelector("[data-role='family-table']");
 
-  if (!familyTable || !yieldTable || !chipTable) {
+  const scenarioModal = document.querySelector("[data-role='scenario-modal']");
+  const scenarioCreateBtn = document.querySelector("[data-action='scenario-create']");
+  const scenarioCancelBtns = Array.from(document.querySelectorAll("[data-action='scenario-cancel']"));
+  const scenarioCreateIdInput = document.querySelector("#scenario-create-id");
+  const scenarioCreateNameInput = document.querySelector("#scenario-create-name");
+  const scenarioCreateStartInput = document.querySelector("#scenario-create-start");
+  const scenarioCreateEndInput = document.querySelector("#scenario-create-end");
+  const scenarioCreateModelSelect = document.querySelector("#scenario-create-model");
+
+  if (!familyParamTable || !yieldTable || !chipTable) {
     return;
   }
 
@@ -214,11 +233,70 @@ export function initScenarioEditor({ data, onSave } = {}) {
   let currentScenario = null;
   let syncing = false;
 
+  function updateActiveScenarioLabels() {
+    const displayName = currentScenario?.name || currentScenario?.scenario_id || "–";
+    const id = currentScenario?.scenario_id || "";
+    const label =
+      id && displayName !== id ? `Aktiv: ${displayName} (${id})` : `Aktiv: ${displayName}`;
+    for (const el of activeScenarioLabels) {
+      el.textContent = label;
+    }
+  }
+
+  function renderScenarioList() {
+    if (!scenarioList) return;
+    scenarioList.innerHTML = "";
+
+    if (!scenarios.length) {
+      const empty = document.createElement("div");
+      empty.className = "status-text";
+      empty.textContent = "Noch keine Szenarien vorhanden.";
+      scenarioList.appendChild(empty);
+      return;
+    }
+
+    for (const s of scenarios) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "scenario-card" + (s.scenario_id === currentScenarioId ? " is-active" : "");
+      btn.addEventListener("click", () => selectScenario(s.scenario_id));
+
+      const title = document.createElement("div");
+      title.className = "scenario-card-title";
+      title.textContent = s.name || s.scenario_id;
+
+      const meta = document.createElement("div");
+      meta.className = "scenario-card-meta";
+      const start = toText(s.start_year) || "–";
+      const end = toText(s.end_year) || "–";
+      meta.textContent = `${s.scenario_id} · ${start}–${end}`;
+
+      const model = models.find((m) => m.id === s.selected_vm_yield_model_id);
+      const modelLine = document.createElement("div");
+      modelLine.className = "scenario-card-meta";
+      modelLine.textContent = `Modell: ${model?.name || s.selected_vm_yield_model_id || "–"}`;
+
+      if (s.scenario_id === currentScenarioId) {
+        const tag = document.createElement("div");
+        tag.className = "scenario-card-tag";
+        tag.textContent = "Aktiv";
+        btn.appendChild(tag);
+      }
+
+      btn.appendChild(title);
+      btn.appendChild(meta);
+      btn.appendChild(modelLine);
+
+      scenarioList.appendChild(btn);
+    }
+  }
+
   function selectScenario(id) {
     currentScenario = scenarios.find((s) => s.scenario_id === id) || scenarios[0] || null;
     currentScenarioId = currentScenario?.scenario_id || "";
 
     syncing = true;
+    if (scenarioSelect) scenarioSelect.value = currentScenarioId;
     if (scenarioIdInput) scenarioIdInput.value = toText(currentScenario?.scenario_id);
     if (scenarioNameInput) scenarioNameInput.value = toText(currentScenario?.name);
     if (scenarioStartInput) scenarioStartInput.value = toText(currentScenario?.start_year);
@@ -226,12 +304,16 @@ export function initScenarioEditor({ data, onSave } = {}) {
     renderModelOptions(scenarioModelSelect, models, currentScenario?.selected_vm_yield_model_id);
     syncing = false;
 
+    updateActiveScenarioLabels();
+    renderScenarioList();
     renderFamilyTable();
     renderScenarioYieldTable();
   }
 
   function refreshScenarioSelect(selectedId) {
     renderScenarioOptions(scenarioSelect, scenarios, selectedId);
+    renderScenarioList();
+    updateActiveScenarioLabels();
   }
 
   function updateScenarioNameOption() {
@@ -243,10 +325,112 @@ export function initScenarioEditor({ data, onSave } = {}) {
         break;
       }
     }
+    renderScenarioList();
+  }
+
+  function renderFamiliesTable() {
+    if (!familyMasterTable) return;
+    const tbody = familyMasterTable.querySelector("tbody");
+    if (!tbody) return;
+    tbody.innerHTML = "";
+
+    if (!families.length) {
+      createEmptyRow(tbody, 4, "Noch keine Families.");
+      return;
+    }
+
+    for (const row of families) {
+      const tr = document.createElement("tr");
+
+      let lastId = row.family_id || "";
+      const idCell = createInputCell({
+        value: lastId,
+        placeholder: "FAM_28",
+        onInput: (val) => {
+          row.family_id = val.trim();
+        },
+        onCommit: (val, input) => {
+          const next = val.trim();
+          if (!next) {
+            input.value = lastId;
+            row.family_id = lastId;
+            status("Family-ID darf nicht leer sein.");
+            return;
+          }
+          if (findDuplicate(families, row, (r) => r.family_id === next)) {
+            input.value = lastId;
+            row.family_id = lastId;
+            status("Family-ID existiert bereits.");
+            return;
+          }
+
+          const prev = lastId;
+          row.family_id = next;
+          if (!row.name || row.name === prev) {
+            row.name = next;
+          }
+
+          for (const fp of familyParams) {
+            if (fp.family_id === prev) fp.family_id = next;
+          }
+          for (const chip of chipTypes) {
+            if (chip.family_id === prev) chip.family_id = next;
+          }
+
+          lastId = next;
+          renderFamilyTable();
+          renderChipTable();
+          status(`Family-ID geändert: ${prev} -> ${next}`);
+        }
+      });
+      tr.appendChild(idCell.td);
+
+      const nameCell = createInputCell({
+        value: toText(row.name),
+        placeholder: "28nm",
+        onInput: (val) => {
+          row.name = val;
+        }
+      });
+      tr.appendChild(nameCell.td);
+
+      const descCell = createInputCell({
+        value: toText(row.description),
+        placeholder: "z.B. 28nm technology family",
+        onInput: (val) => {
+          row.description = val;
+        }
+      });
+      tr.appendChild(descCell.td);
+
+      const actionTd = document.createElement("td");
+      const removeBtn = createRemoveButton(() => {
+        if (!confirm(`Family "${row.family_id}" wirklich entfernen?`)) return;
+        const removedId = row.family_id;
+        const idx = families.indexOf(row);
+        if (idx >= 0) families.splice(idx, 1);
+
+        for (let i = familyParams.length - 1; i >= 0; i -= 1) {
+          if (familyParams[i].family_id === removedId) familyParams.splice(i, 1);
+        }
+        for (const chip of chipTypes) {
+          if (chip.family_id === removedId) chip.family_id = "";
+        }
+
+        renderFamiliesTable();
+        renderFamilyTable();
+        renderChipTable();
+        status("Family entfernt und verknüpfte Daten bereinigt.");
+      });
+      actionTd.appendChild(removeBtn);
+      tr.appendChild(actionTd);
+
+      tbody.appendChild(tr);
+    }
   }
 
   function renderFamilyTable() {
-    const tbody = familyTable.querySelector("tbody");
+    const tbody = familyParamTable.querySelector("tbody");
     if (!tbody) return;
     tbody.innerHTML = "";
 
@@ -287,7 +471,8 @@ export function initScenarioEditor({ data, onSave } = {}) {
             return;
           }
           row.family_id = next;
-          ensureFamilyExists(data, next);
+          const created = ensureFamilyExists(data, next);
+          if (created) renderFamiliesTable();
           lastFamily = next;
         }
       });
@@ -456,7 +641,8 @@ export function initScenarioEditor({ data, onSave } = {}) {
         onCommit: (val) => {
           const next = val.trim();
           row.family_id = next;
-          ensureFamilyExists(data, next);
+          const created = ensureFamilyExists(data, next);
+          if (created) renderFamiliesTable();
         }
       });
       tr.appendChild(familyCell.td);
@@ -515,23 +701,63 @@ export function initScenarioEditor({ data, onSave } = {}) {
     }
   }
 
-  function addScenario() {
-    const rawId = scenarioIdInput?.value?.trim() || "";
+  function openScenarioModal() {
+    if (!scenarioModal) return;
+
     const existingIds = new Set(scenarios.map((s) => s.scenario_id));
+    const suggestedId = generateUniqueId("Scenario", existingIds);
+    if (scenarioCreateIdInput) scenarioCreateIdInput.value = suggestedId;
+    if (scenarioCreateNameInput) scenarioCreateNameInput.value = "";
+
+    const baseStart = Number.isFinite(currentScenario?.start_year)
+      ? currentScenario.start_year
+      : 2025;
+    const baseEnd = Number.isFinite(currentScenario?.end_year)
+      ? currentScenario.end_year
+      : baseStart;
+
+    if (scenarioCreateStartInput) scenarioCreateStartInput.value = toText(baseStart);
+    if (scenarioCreateEndInput) scenarioCreateEndInput.value = toText(baseEnd);
+    renderModelOptions(
+      scenarioCreateModelSelect,
+      models,
+      currentScenario?.selected_vm_yield_model_id || models[0]?.id
+    );
+
+    scenarioModal.classList.add("is-open");
+    scenarioModal.setAttribute("aria-hidden", "false");
+    scenarioCreateIdInput?.focus();
+  }
+
+  function closeScenarioModal() {
+    if (!scenarioModal) return;
+    scenarioModal.classList.remove("is-open");
+    scenarioModal.setAttribute("aria-hidden", "true");
+  }
+
+  function createScenarioFromModal() {
+    const existingIds = new Set(scenarios.map((s) => s.scenario_id));
+    const rawId = scenarioCreateIdInput?.value?.trim() || "";
     const id = rawId || generateUniqueId("Scenario", existingIds);
 
-    if (scenarios.some((s) => s.scenario_id === id)) {
+    if (existingIds.has(id)) {
       status("Szenario-ID existiert bereits.");
       return;
     }
 
-    const start = toNumberOrNull(scenarioStartInput?.value);
-    const end = toNumberOrNull(scenarioEndInput?.value);
-    const modelId = scenarioModelSelect?.value || models[0]?.id || "";
+    const start = toNumberOrNull(scenarioCreateStartInput?.value);
+    let end = toNumberOrNull(scenarioCreateEndInput?.value);
+    const modelId = scenarioCreateModelSelect?.value || models[0]?.id || "";
+    const name = scenarioCreateNameInput?.value?.trim() || id;
+
+    if (Number.isFinite(start) && Number.isFinite(end) && end < start) {
+      end = start;
+      status("Endjahr lag vor Startjahr und wurde angepasst.");
+    }
 
     const scenario = {
       scenario_id: id,
-      name: scenarioNameInput?.value?.trim() || id,
+      name,
       start_year: start ?? 2025,
       end_year: end ?? start ?? 2025,
       selected_vm_yield_model_id: modelId
@@ -540,7 +766,20 @@ export function initScenarioEditor({ data, onSave } = {}) {
     scenarios.push(scenario);
     refreshScenarioSelect(id);
     selectScenario(id);
+    closeScenarioModal();
     status("Szenario hinzugefügt.");
+  }
+
+  function addFamily() {
+    const existingIds = new Set(families.map((f) => f.family_id));
+    const id = generateUniqueId("FAM", existingIds);
+    families.push({
+      family_id: id,
+      name: id,
+      description: ""
+    });
+    renderFamiliesTable();
+    status("Family hinzugefügt.");
   }
 
   function addFamilyParam() {
@@ -549,7 +788,7 @@ export function initScenarioEditor({ data, onSave } = {}) {
       return;
     }
 
-    const defaultFamily = data.families?.[0]?.family_id || "";
+    const defaultFamily = families[0]?.family_id || "";
     familyParams.push({
       scenario_id: currentScenarioId,
       family_id: defaultFamily,
@@ -589,7 +828,7 @@ export function initScenarioEditor({ data, onSave } = {}) {
   }
 
   function addChipType() {
-    const defaultFamily = data.families?.[0]?.family_id || "";
+    const defaultFamily = families[0]?.family_id || "";
     chipTypes.push({
       ttnr: "",
       name: "",
@@ -635,6 +874,7 @@ export function initScenarioEditor({ data, onSave } = {}) {
   // Init
   refreshScenarioSelect(scenarios[0]?.scenario_id || "");
   selectScenario(scenarioSelect?.value || scenarios[0]?.scenario_id || "");
+  renderFamiliesTable();
   renderChipTable();
 
   // Event wiring
@@ -657,6 +897,7 @@ export function initScenarioEditor({ data, onSave } = {}) {
       if (!currentScenario || syncing) return;
       currentScenario.name = scenarioNameInput.value.trim();
       updateScenarioNameOption();
+      updateActiveScenarioLabels();
     });
   }
 
@@ -664,6 +905,7 @@ export function initScenarioEditor({ data, onSave } = {}) {
     scenarioStartInput.addEventListener("input", () => {
       if (!currentScenario || syncing) return;
       currentScenario.start_year = toNumberOrNull(scenarioStartInput.value);
+      renderScenarioList();
       if (
         Number.isFinite(currentScenario.start_year) &&
         Number.isFinite(currentScenario.end_year) &&
@@ -678,6 +920,7 @@ export function initScenarioEditor({ data, onSave } = {}) {
     scenarioEndInput.addEventListener("input", () => {
       if (!currentScenario || syncing) return;
       currentScenario.end_year = toNumberOrNull(scenarioEndInput.value);
+      renderScenarioList();
       if (
         Number.isFinite(currentScenario.start_year) &&
         Number.isFinite(currentScenario.end_year) &&
@@ -692,10 +935,22 @@ export function initScenarioEditor({ data, onSave } = {}) {
     scenarioModelSelect.addEventListener("change", () => {
       if (!currentScenario || syncing) return;
       currentScenario.selected_vm_yield_model_id = scenarioModelSelect.value;
+      renderScenarioList();
     });
   }
 
-  if (scenarioAddBtn) scenarioAddBtn.addEventListener("click", addScenario);
+  if (scenarioOpenBtn) scenarioOpenBtn.addEventListener("click", openScenarioModal);
+  if (scenarioCreateBtn) scenarioCreateBtn.addEventListener("click", createScenarioFromModal);
+  for (const btn of scenarioCancelBtns) {
+    btn.addEventListener("click", () => closeScenarioModal());
+  }
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && scenarioModal?.classList.contains("is-open")) {
+      closeScenarioModal();
+    }
+  });
+
+  if (familyMasterAddBtn) familyMasterAddBtn.addEventListener("click", addFamily);
   if (familyAddBtn) familyAddBtn.addEventListener("click", addFamilyParam);
   if (yieldAddBtn) yieldAddBtn.addEventListener("click", addScenarioYield);
   if (chipAddBtn) chipAddBtn.addEventListener("click", addChipType);

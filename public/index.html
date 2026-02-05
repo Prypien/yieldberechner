@@ -46,9 +46,24 @@
       </div>
     </section>
 
+    <section class="input-panel">
+      <div class="panel-header">
+        <div>
+          <h2>Vorhandene Szenarien</h2>
+          <p>Überblick über bereits angelegte Szenarien.</p>
+        </div>
+      </div>
+      <div class="card-grid" data-role="scenario-cards"></div>
+      <div class="status is-hidden" data-role="scenario-empty">
+        <div class="status-text">Noch keine Szenarien vorhanden. Lege eins im Szenario-Input an.</div>
+      </div>
+    </section>
+
     <section class="note-panel">
       <p><strong>Hinweis:</strong> Alle Daten werden als JSON gespeichert und sofort wiederverwendet.</p>
     </section>
   </div>
+
+  <script type="module" src="/JS/landing.js"></script>
 </body>
 </html>
