@@ -1,3 +1,8 @@
+/**
+ * app.js
+ * ------
+ * Einstiegspunkt: lädt Daten, initialisiert UI/Editor und triggert Berechnung.
+ */
 import { loadData, saveData } from "./data.js";
 import { computeResults } from "./calc.js";
 import { initUI, getSelectedScenarioId, getSelectedModelId } from "./ui.js";

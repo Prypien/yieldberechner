@@ -90,7 +90,7 @@ function buildTotalTooltip(row) {
   return [formula, productLine, `Ergebnis: ${fmtPct(row.total)}`].join("\n");
 }
 
-function createCell(value, title) {
+function createCell(value, title, { strong = false } = {}) {
   const td = document.createElement("td");
   if (title) {
     td.title = title;
@@ -98,7 +98,13 @@ function createCell(value, title) {
     td.setAttribute("aria-label", title);
     td.classList.add("has-tooltip");
   }
-  td.innerHTML = value;
+  if (strong) {
+    const el = document.createElement("strong");
+    el.textContent = value;
+    td.appendChild(el);
+  } else {
+    td.textContent = value;
+  }
   return td;
 }
 
@@ -129,7 +135,7 @@ export function renderResultsTable(results, table) {
     tr.appendChild(createCell(fmtPct(row.yields?.SAW), buildStationTooltip("SAW", row)));
     tr.appendChild(createCell(fmtPct(row.yields?.KGD), buildStationTooltip("KGD", row)));
     tr.appendChild(createCell(fmtPct(row.yields?.OSAT), buildStationTooltip("OSAT", row)));
-    tr.appendChild(createCell(`<strong>${fmtPct(row.total)}</strong>`, buildTotalTooltip(row)));
+    tr.appendChild(createCell(fmtPct(row.total), buildTotalTooltip(row), { strong: true }));
 
     tbody.appendChild(tr);
   }

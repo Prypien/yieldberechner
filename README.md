@@ -31,6 +31,10 @@ Ausgabe je Zeile:
 - Szenario wählen
 - Berechnung starten
 - Daten speichern (persistieren)
+
+### ℹ️ Hinweise zur Logik
+- Fehlen Station-Yields für ein Jahr, wird `1.0` angenommen.
+- Dynamische Technologien verwenden den letzten bekannten `yearIndex` ≤ Jahr; sonst `static_yield`, sonst `1.0`.
 ---
 
 ## 2) Projektstruktur
@@ -45,12 +49,17 @@ yieldberechner/
 │   └─ user_data.json              # persistente User-Daten (wird automatisch erzeugt)
 │
 └─ public/
-   ├─ index.html
+   ├─ index.html                   # Landing / Navigation
+   ├─ scenario-input.html          # Szenario-, Family-, Chip-Editor
+   ├─ technologies.html            # Technologien + dynamische Yields
+   ├─ output.html                  # Output-Tabelle + Berechnung
    ├─ styles.css
    ├─ base_data.json               # Seed/Default Daten (im Repo versioniert)
-   └─ js/
+   └─ JS/
       ├─ app.js                    # Orchestrierung (init/load/calc/render/save)
       ├─ data.js                   # Laden/Speichern (API + fallback base)
       ├─ calc.js                   # Rechenlogik (pure functions)
       ├─ ui.js                     # UI wiring (Buttons, select, status)
-      └─ output.js                 # Rendering Ergebnis-Tabelle
+      ├─ output.js                 # Rendering Ergebnis-Tabelle
+      ├─ editor.js                 # Szenario/Technologie-Editoren
+      └─ landing.js                # Landing-Page Szenario-Karten

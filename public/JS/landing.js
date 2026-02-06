@@ -1,3 +1,8 @@
+/**
+ * landing.js
+ * ----------
+ * Rendert die Szenario-Übersicht auf der Landing-Page.
+ */
 import { loadData } from "./data.js";
 
 function buildScenarioCard(scenario, modelName) {

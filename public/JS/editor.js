@@ -962,6 +962,7 @@ export function initScenarioEditor({ data, onSave } = {}) {
 export function initTechnologyEditor({ data, onSave } = {}) {
   const technologies = ensureArray(data, "technologies");
   const techYields = ensureArray(data, "technology_yields");
+  const chipTypes = ensureArray(data, "chip_types");
 
   const status = createStatusReporter();
 
@@ -973,6 +974,28 @@ export function initTechnologyEditor({ data, onSave } = {}) {
 
   if (!techTable || !techYieldTable) {
     return;
+  }
+
+  function replaceTechnologyId(prevId, nextId) {
+    if (!prevId || prevId === nextId) return;
+    for (const row of techYields) {
+      if (row.tech_id === prevId) row.tech_id = nextId;
+    }
+    for (const chip of chipTypes) {
+      if (!Array.isArray(chip.technologies)) continue;
+      chip.technologies = chip.technologies.map((id) => (id === prevId ? nextId : id));
+    }
+  }
+
+  function removeTechnologyRefs(techId) {
+    if (!techId) return;
+    for (let i = techYields.length - 1; i >= 0; i -= 1) {
+      if (techYields[i].tech_id === techId) techYields.splice(i, 1);
+    }
+    for (const chip of chipTypes) {
+      if (!Array.isArray(chip.technologies)) continue;
+      chip.technologies = chip.technologies.filter((id) => id !== techId);
+    }
   }
 
   function renderTechTable() {
@@ -1003,8 +1026,14 @@ export function initTechnologyEditor({ data, onSave } = {}) {
             status("Tech-ID existiert bereits.");
             return;
           }
+          const prev = lastId;
           row.tech_id = next;
+          replaceTechnologyId(prev, next);
           lastId = next;
+          if (prev && prev !== next) {
+            renderTechYieldTable();
+            status(`Tech-ID geändert: ${prev} -> ${next}`);
+          }
         }
       });
       tr.appendChild(idCell.td);
@@ -1060,9 +1089,10 @@ export function initTechnologyEditor({ data, onSave } = {}) {
       const removeBtn = createRemoveButton(() => {
         const idx = technologies.indexOf(row);
         if (idx >= 0) technologies.splice(idx, 1);
+        removeTechnologyRefs(row.tech_id);
         renderTechTable();
         renderTechYieldTable();
-        status("Technologie entfernt.");
+        status("Technologie entfernt und Verknüpfungen bereinigt.");
       });
       actionTd.appendChild(removeBtn);
       tr.appendChild(actionTd);
