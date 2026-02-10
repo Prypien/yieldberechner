@@ -55,6 +55,37 @@
     </section>
 
     <section class="results">
+      <div class="filter-bar">
+        <div class="filter-group">
+          <label for="filter-year">Jahr</label>
+          <select id="filter-year" class="control-select">
+            <option value="">Alle</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label for="filter-family">Family</label>
+          <select id="filter-family" class="control-select">
+            <option value="">Alle</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label for="filter-ttnr">TTNR</label>
+          <input type="text" id="filter-ttnr" class="control-input" placeholder="Suchtext..." />
+        </div>
+        <div class="filter-group">
+          <label for="filter-name">Name</label>
+          <input type="text" id="filter-name" class="control-input" placeholder="Suchtext..." />
+        </div>
+        <div class="filter-group">
+          <label for="filter-min-yield">Min. Total Yield</label>
+          <input type="number" id="filter-min-yield" class="control-input" step="0.01" placeholder="0.00" />
+        </div>
+        <div class="filter-group filter-group--checkbox">
+          <input type="checkbox" id="toggle-heatmap" checked />
+          <label for="toggle-heatmap">Heatmap</label>
+        </div>
+      </div>
+
       <div class="results-header">
         <div>
           <h2>Yield-Tabelle</h2>

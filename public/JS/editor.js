@@ -114,6 +114,47 @@ function createSelectCell({
   return { td, select };
 }
 
+function createTechSelector({
+  options = [],
+  values = [],
+  onChange
+}) {
+  const container = document.createElement("div");
+  container.className = "tech-selector";
+
+  const selectedSet = new Set(values);
+
+  for (const opt of options) {
+    const label = document.createElement("label");
+    label.className = "tech-check" + (selectedSet.has(opt.value) ? " is-active" : "");
+
+    const input = document.createElement("input");
+    input.type = "checkbox";
+    input.value = opt.value;
+    input.checked = selectedSet.has(opt.value);
+
+    label.appendChild(input);
+    label.appendChild(document.createTextNode(opt.label));
+
+    input.addEventListener("change", () => {
+      if (input.checked) {
+        selectedSet.add(opt.value);
+        label.classList.add("is-active");
+      } else {
+        selectedSet.delete(opt.value);
+        label.classList.remove("is-active");
+      }
+      if (typeof onChange === "function") {
+        onChange(Array.from(selectedSet));
+      }
+    });
+
+    container.appendChild(label);
+  }
+
+  return container;
+}
+
 function createRemoveButton(onRemove) {
   const btn = document.createElement("button");
   btn.type = "button";
@@ -719,16 +760,17 @@ export function initScenarioEditor({ data, onSave } = {}) {
 
       const techIds = Array.isArray(row.technologies) ? row.technologies : [];
       const techOptions = buildTechnologyOptions(technologies, techIds);
-      const techCell = createSelectCell({
+
+      const techTd = document.createElement("td");
+      const techSelector = createTechSelector({
         options: techOptions,
         values: techIds,
-        multiple: true,
-        className: "control-select control-select--multi",
         onChange: (val) => {
           row.technologies = Array.isArray(val) ? val : [];
         }
       });
-      tr.appendChild(techCell.td);
+      techTd.appendChild(techSelector);
+      tr.appendChild(techTd);
 
       const actionTd = document.createElement("td");
       const removeBtn = createRemoveButton(() => {

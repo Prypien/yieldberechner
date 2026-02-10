@@ -819,3 +819,111 @@ a {
   outline: none;
   font-family: var(--sans);
 }
+/* Filter Bar */
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 12px 20px;
+  background: var(--surface-strong);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+  align-items: flex-end;
+}
+
+.filter-group {
+  display: grid;
+  gap: 4px;
+}
+
+.filter-group label {
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.text-sm {
+  padding: 6px 10px;
+  font-size: 13px;
+  min-width: 140px;
+}
+
+/* Toggle */
+.toggle-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px; /* Match input height */
+}
+
+.toggle-label {
+  font-size: 13px;
+  color: var(--text);
+  cursor: pointer;
+  user-select: none;
+}
+
+/* Heatmaps / Yield Colors */
+.yield-cell {
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+/* Only apply colors if .heatmap-active class is on the table/tbody */
+.heatmap-active .yield-ok {
+  background-color: rgba(16, 185, 129, 0.1);
+  color: #047857;
+}
+
+.heatmap-active .yield-warn {
+  background-color: rgba(245, 158, 11, 0.1);
+  color: #b45309;
+}
+
+.heatmap-active .yield-bad {
+  background-color: rgba(239, 68, 68, 0.1);
+  color: #b91c1c;
+}
+
+.heatmap-active .yield-crit {
+  background-color: rgba(239, 68, 68, 0.2);
+  color: #991b1b;
+  font-weight: 600;
+}
+/* Tech Selector */
+.tech-selector {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    max-width: 300px;
+}
+
+.tech-check {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    font-size: 12px;
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.15s ease;
+}
+
+.tech-check:hover {
+    border-color: var(--primary);
+    background: var(--surface-strong);
+}
+
+.tech-check.is-active {
+    background: rgba(37, 99, 235, 0.15);
+    border-color: var(--primary);
+    color: var(--primary-strong);
+    font-weight: 500;
+}
+
+.tech-check input {
+    display: none;
+}

@@ -115,6 +115,38 @@ export function renderResultsTable(results, table) {
     return;
   }
 
+  // Populate Filters
+  const yearSelect = document.getElementById("filter-year");
+  const familySelect = document.getElementById("filter-family");
+
+  if (yearSelect && familySelect) {
+    const currentYear = yearSelect.value;
+    const currentFamily = familySelect.value;
+
+    const years = new Set(results.map(r => r.year));
+    const families = new Set(results.map(r => r.family_id));
+
+    // Only rebuild if empty (first run) or if list changed? 
+    // For simplicity, rebuild but keep selection if possible
+    yearSelect.innerHTML = '<option value="">Alle Jahre</option>';
+    Array.from(years).sort().forEach(y => {
+      const opt = document.createElement("option");
+      opt.value = y;
+      opt.textContent = y;
+      if (String(y) === currentYear) opt.selected = true;
+      yearSelect.appendChild(opt);
+    });
+
+    familySelect.innerHTML = '<option value="">Alle Families</option>';
+    Array.from(families).sort().forEach(f => {
+      const opt = document.createElement("option");
+      opt.value = f;
+      opt.textContent = f;
+      if (f === currentFamily) opt.selected = true;
+      familySelect.appendChild(opt);
+    });
+  }
+
   tbody.innerHTML = "";
 
   if (!Array.isArray(results) || results.length === 0) {
@@ -124,7 +156,35 @@ export function renderResultsTable(results, table) {
     return;
   }
 
-  for (const row of results) {
+  /* Filter Logic */
+  const filterYearStr = document.getElementById("filter-year")?.value || "";
+  const filterFamily = document.getElementById("filter-family")?.value || "";
+  const filterTtnr = document.getElementById("filter-ttnr")?.value?.trim().toLowerCase() || "";
+  const filterName = document.getElementById("filter-name")?.value?.trim().toLowerCase() || "";
+  const filterMinStr = document.getElementById("filter-min-yield")?.value || "";
+  const useHeatmap = document.getElementById("toggle-heatmap")?.checked ?? true;
+
+  const minTotal = filterMinStr ? Number(filterMinStr) : 0;
+
+  tbody.classList.toggle("heatmap-active", useHeatmap);
+
+  const filtered = results.filter(row => {
+    if (filterYearStr && String(row.year) !== filterYearStr) return false;
+    if (filterFamily && row.family_id !== filterFamily) return false;
+    if (filterTtnr && !String(row.ttnr || "").toLowerCase().includes(filterTtnr)) return false;
+    if (filterName && !String(row.name || "").toLowerCase().includes(filterName)) return false;
+    if (minTotal > 0 && (row.total || 0) < minTotal) return false;
+    return true;
+  });
+
+  if (!filtered.length) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td colspan="11" style="text-align:center;">Keine Ergebnisse für diese Filter</td>`;
+    tbody.appendChild(tr);
+    return;
+  }
+
+  for (const row of filtered) {
     const tr = document.createElement("tr");
     tr.appendChild(createCell(String(row.year)));
     tr.appendChild(createCell(row.ttnr || ""));
@@ -135,7 +195,19 @@ export function renderResultsTable(results, table) {
     tr.appendChild(createCell(fmtPct(row.yields?.SAW), buildStationTooltip("SAW", row)));
     tr.appendChild(createCell(fmtPct(row.yields?.KGD), buildStationTooltip("KGD", row)));
     tr.appendChild(createCell(fmtPct(row.yields?.OSAT), buildStationTooltip("OSAT", row)));
-    tr.appendChild(createCell(fmtPct(row.total), buildTotalTooltip(row), { strong: true }));
+
+    // Total + Heatmap Class
+    const totalCell = createCell(fmtPct(row.total), buildTotalTooltip(row), { strong: true });
+
+    // Heatmap logic: <80% crit, <90% bad, <95% warn, else ok
+    const t = row.total || 0;
+    if (t < 0.8) totalCell.classList.add("yield-crit");
+    else if (t < 0.9) totalCell.classList.add("yield-bad");
+    else if (t < 0.95) totalCell.classList.add("yield-warn");
+    else totalCell.classList.add("yield-ok");
+
+    totalCell.classList.add("yield-cell");
+    tr.appendChild(totalCell);
 
     tbody.appendChild(tr);
   }

@@ -214,7 +214,24 @@ export function initUI({
   // Recompute
   if (els.recomputeButton && typeof onRecompute === "function") {
     els.recomputeButton.addEventListener("click", () => onRecompute());
-  }
 
-  setStatus("UI bereit.");
+    // Filter Events (Trigger re-render)
+    const filters = ["filter-year", "filter-family", "filter-ttnr", "filter-name", "filter-min-yield", "toggle-heatmap"];
+    for (const id of filters) {
+      const el = document.getElementById(id);
+      if (el) {
+        el.addEventListener("change", () => {
+          // We assume onRecompute will just call renderResultsTable again
+          // which now reads values directly from DOM (a bit dirty but simple for now)
+          // OR better: we trigger the standard recompute flow
+          if (typeof onRecompute === "function") onRecompute();
+        });
+        el.addEventListener("input", () => {
+          if (typeof onRecompute === "function") onRecompute();
+        });
+      }
+    }
+
+    setStatus("UI bereit.");
+  }
 }
