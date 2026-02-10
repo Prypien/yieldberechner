@@ -36,13 +36,6 @@ function toNumberOrNull(value) {
   return Number.isFinite(n) ? n : null;
 }
 
-function parseCsv(value) {
-  return String(value || "")
-    .split(",")
-    .map((v) => v.trim())
-    .filter(Boolean);
-}
-
 function createEmptyRow(tbody, colSpan, message) {
   const tr = document.createElement("tr");
   const td = document.createElement("td");
@@ -77,21 +70,45 @@ function createInputCell({
   return { td, input };
 }
 
-function createSelectCell({ options = [], value = "", onChange }) {
+function createSelectCell({
+  options = [],
+  value = "",
+  values = [],
+  multiple = false,
+  className = "control-select",
+  onChange
+}) {
   const td = document.createElement("td");
   const select = document.createElement("select");
-  select.className = "control-select";
+  select.className = className;
+  if (multiple) select.multiple = true;
 
   for (const opt of options) {
     const o = document.createElement("option");
     o.value = String(opt.value);
     o.textContent = opt.label;
+    if (opt.disabled) o.disabled = true;
     select.appendChild(o);
   }
 
-  select.value = value ?? "";
+  if (multiple) {
+    const selected = new Set((values || []).map((v) => String(v)));
+    for (const opt of Array.from(select.options)) {
+      if (selected.has(opt.value)) opt.selected = true;
+    }
+  } else {
+    select.value = value ?? "";
+  }
+
   if (typeof onChange === "function") {
-    select.addEventListener("change", () => onChange(select.value, select));
+    select.addEventListener("change", () => {
+      if (multiple) {
+        const next = Array.from(select.selectedOptions).map((opt) => opt.value);
+        onChange(next, select);
+      } else {
+        onChange(select.value, select);
+      }
+    });
   }
   td.appendChild(select);
   return { td, select };
@@ -183,33 +200,72 @@ function generateUniqueId(prefix, existingIds) {
   return candidate;
 }
 
+function buildFamilyOptions(families, currentId) {
+  const options = (families || [])
+    .filter((f) => f.family_id)
+    .map((f) => ({
+      value: f.family_id,
+      label: f.name ? `${f.name} (${f.family_id})` : f.family_id
+    }));
+
+  const known = new Set(options.map((opt) => opt.value));
+  if (currentId && !known.has(currentId)) {
+    options.push({ value: currentId, label: `${currentId} (nicht gefunden)` });
+  }
+
+  if (!options.length) {
+    return [{ value: "", label: "Keine Families verfügbar", disabled: true }];
+  }
+
+  return options;
+}
+
+function buildTechnologyOptions(technologies, selectedIds = []) {
+  const options = (technologies || [])
+    .filter((t) => t.tech_id)
+    .map((t) => ({
+      value: t.tech_id,
+      label: t.name ? `${t.name} (${t.tech_id})` : t.tech_id
+    }));
+
+  const known = new Set(options.map((opt) => opt.value));
+  for (const id of selectedIds) {
+    if (id && !known.has(id)) {
+      options.push({ value: id, label: `${id} (nicht gefunden)` });
+    }
+  }
+
+  if (!options.length) {
+    return [{ value: "", label: "Keine Technologien verfügbar", disabled: true }];
+  }
+
+  return options;
+}
+
 export function initScenarioEditor({ data, onSave } = {}) {
   const scenarios = ensureArray(data, "scenarios");
   const families = ensureArray(data, "families");
   const familyParams = ensureArray(data, "scenario_family_params");
   const scenarioYields = ensureArray(data, "scenario_yields");
   const chipTypes = ensureArray(data, "chip_types");
+  const technologies = ensureArray(data, "technologies");
   const models = ensureArray(data, "vm_yield_models");
 
   const status = createStatusReporter();
 
   const scenarioSelect = document.querySelector("#scenario-select");
-  const scenarioIdInput = document.querySelector("#scenario-id");
-  const scenarioNameInput = document.querySelector("#scenario-name");
-  const scenarioStartInput = document.querySelector("#scenario-start");
-  const scenarioEndInput = document.querySelector("#scenario-end");
-  const scenarioModelSelect = document.querySelector("#scenario-model");
   const scenarioList = document.querySelector("[data-role='scenario-list']");
   const activeScenarioLabels = Array.from(
     document.querySelectorAll("[data-role='active-scenario-label']")
   );
 
   const scenarioOpenBtn = document.querySelector("[data-action='scenario-open']");
+  const scenarioEditBtn = document.querySelector("[data-action='scenario-edit']");
   const familyAddBtn = document.querySelector("[data-action='family-param-add']");
   const yieldAddBtn = document.querySelector("[data-action='scenario-yield-add']");
   const chipAddBtn = document.querySelector("[data-action='chip-type-add']");
   const familyMasterAddBtn = document.querySelector("[data-action='family-add']");
-  const saveBtn = document.querySelector("#save-data");
+  const saveButtons = Array.from(document.querySelectorAll("[data-action='save-data']"));
 
   const familyParamTable = document.querySelector("[data-role='family-param-table']");
   const yieldTable = document.querySelector("[data-role='scenario-yield-table']");
@@ -217,7 +273,9 @@ export function initScenarioEditor({ data, onSave } = {}) {
   const familyMasterTable = document.querySelector("[data-role='family-table']");
 
   const scenarioModal = document.querySelector("[data-role='scenario-modal']");
-  const scenarioCreateBtn = document.querySelector("[data-action='scenario-create']");
+  const scenarioModalTitle = document.querySelector("[data-role='scenario-modal-title']");
+  const scenarioModalHint = document.querySelector("[data-role='scenario-modal-hint']");
+  const scenarioSaveBtn = document.querySelector("[data-action='scenario-save']");
   const scenarioCancelBtns = Array.from(document.querySelectorAll("[data-action='scenario-cancel']"));
   const scenarioCreateIdInput = document.querySelector("#scenario-create-id");
   const scenarioCreateNameInput = document.querySelector("#scenario-create-name");
@@ -232,6 +290,8 @@ export function initScenarioEditor({ data, onSave } = {}) {
   let currentScenarioId = "";
   let currentScenario = null;
   let syncing = false;
+  let scenarioModalMode = "create";
+  let scenarioEditingId = "";
 
   function updateActiveScenarioLabels() {
     const displayName = currentScenario?.name || currentScenario?.scenario_id || "–";
@@ -297,11 +357,6 @@ export function initScenarioEditor({ data, onSave } = {}) {
 
     syncing = true;
     if (scenarioSelect) scenarioSelect.value = currentScenarioId;
-    if (scenarioIdInput) scenarioIdInput.value = toText(currentScenario?.scenario_id);
-    if (scenarioNameInput) scenarioNameInput.value = toText(currentScenario?.name);
-    if (scenarioStartInput) scenarioStartInput.value = toText(currentScenario?.start_year);
-    if (scenarioEndInput) scenarioEndInput.value = toText(currentScenario?.end_year);
-    renderModelOptions(scenarioModelSelect, models, currentScenario?.selected_vm_yield_model_id);
     syncing = false;
 
     updateActiveScenarioLabels();
@@ -314,18 +369,7 @@ export function initScenarioEditor({ data, onSave } = {}) {
     renderScenarioOptions(scenarioSelect, scenarios, selectedId);
     renderScenarioList();
     updateActiveScenarioLabels();
-  }
-
-  function updateScenarioNameOption() {
-    if (!scenarioSelect || !currentScenario) return;
-    const options = Array.from(scenarioSelect.options);
-    for (const opt of options) {
-      if (opt.value === currentScenario.scenario_id) {
-        opt.textContent = currentScenario.name || currentScenario.scenario_id;
-        break;
-      }
-    }
-    renderScenarioList();
+    if (scenarioEditBtn) scenarioEditBtn.disabled = !scenarios.length;
   }
 
   function renderFamiliesTable() {
@@ -632,17 +676,12 @@ export function initScenarioEditor({ data, onSave } = {}) {
       });
       tr.appendChild(nameCell.td);
 
-      const familyCell = createInputCell({
-        value: toText(row.family_id),
-        placeholder: "FAM_28",
-        onInput: (val) => {
-          row.family_id = val.trim();
-        },
-        onCommit: (val) => {
-          const next = val.trim();
-          row.family_id = next;
-          const created = ensureFamilyExists(data, next);
-          if (created) renderFamiliesTable();
+      const familyOptions = buildFamilyOptions(families, row.family_id);
+      const familyCell = createSelectCell({
+        options: familyOptions,
+        value: row.family_id || "",
+        onChange: (val) => {
+          row.family_id = val;
         }
       });
       tr.appendChild(familyCell.td);
@@ -678,11 +717,15 @@ export function initScenarioEditor({ data, onSave } = {}) {
       });
       tr.appendChild(startCell.td);
 
-      const techCell = createInputCell({
-        value: Array.isArray(row.technologies) ? row.technologies.join(", ") : "",
-        placeholder: "TECH_SAKASA, TECH_OSAT_PLUS",
-        onInput: (val) => {
-          row.technologies = parseCsv(val);
+      const techIds = Array.isArray(row.technologies) ? row.technologies : [];
+      const techOptions = buildTechnologyOptions(technologies, techIds);
+      const techCell = createSelectCell({
+        options: techOptions,
+        values: techIds,
+        multiple: true,
+        className: "control-select control-select--multi",
+        onChange: (val) => {
+          row.technologies = Array.isArray(val) ? val : [];
         }
       });
       tr.appendChild(techCell.td);
@@ -701,28 +744,71 @@ export function initScenarioEditor({ data, onSave } = {}) {
     }
   }
 
-  function openScenarioModal() {
+  function replaceScenarioId(prevId, nextId) {
+    if (!prevId || prevId === nextId) return;
+    for (const fp of familyParams) {
+      if (fp.scenario_id === prevId) fp.scenario_id = nextId;
+    }
+    for (const sy of scenarioYields) {
+      if (sy.scenario_id === prevId) sy.scenario_id = nextId;
+    }
+  }
+
+  function openScenarioModal(mode = "create") {
     if (!scenarioModal) return;
 
-    const existingIds = new Set(scenarios.map((s) => s.scenario_id));
-    const suggestedId = generateUniqueId("Scenario", existingIds);
-    if (scenarioCreateIdInput) scenarioCreateIdInput.value = suggestedId;
-    if (scenarioCreateNameInput) scenarioCreateNameInput.value = "";
+    const isEdit = mode === "edit";
+    scenarioModalMode = isEdit ? "edit" : "create";
 
-    const baseStart = Number.isFinite(currentScenario?.start_year)
-      ? currentScenario.start_year
-      : 2025;
-    const baseEnd = Number.isFinite(currentScenario?.end_year)
-      ? currentScenario.end_year
-      : baseStart;
+    if (scenarioModalTitle) {
+      scenarioModalTitle.textContent = isEdit ? "Szenario bearbeiten" : "Neues Szenario";
+    }
+    if (scenarioModalHint) {
+      scenarioModalHint.textContent = isEdit
+        ? "Passe die Werte des aktiven Szenarios an."
+        : "Lege ein neues Szenario an und wähle danach das aktive Szenario oben aus.";
+    }
+    if (scenarioSaveBtn) {
+      scenarioSaveBtn.textContent = isEdit ? "Änderungen speichern" : "Szenario anlegen";
+    }
 
-    if (scenarioCreateStartInput) scenarioCreateStartInput.value = toText(baseStart);
-    if (scenarioCreateEndInput) scenarioCreateEndInput.value = toText(baseEnd);
-    renderModelOptions(
-      scenarioCreateModelSelect,
-      models,
-      currentScenario?.selected_vm_yield_model_id || models[0]?.id
-    );
+    if (isEdit) {
+      if (!currentScenario) {
+        status("Bitte zuerst ein Szenario wählen.");
+        return;
+      }
+      scenarioEditingId = currentScenario.scenario_id || "";
+      if (scenarioCreateIdInput) scenarioCreateIdInput.value = toText(currentScenario.scenario_id);
+      if (scenarioCreateNameInput) scenarioCreateNameInput.value = toText(currentScenario.name);
+      if (scenarioCreateStartInput) scenarioCreateStartInput.value = toText(currentScenario.start_year);
+      if (scenarioCreateEndInput) scenarioCreateEndInput.value = toText(currentScenario.end_year);
+      renderModelOptions(
+        scenarioCreateModelSelect,
+        models,
+        currentScenario.selected_vm_yield_model_id || models[0]?.id
+      );
+    } else {
+      const existingIds = new Set(scenarios.map((s) => s.scenario_id));
+      const suggestedId = generateUniqueId("Scenario", existingIds);
+      if (scenarioCreateIdInput) scenarioCreateIdInput.value = suggestedId;
+      if (scenarioCreateNameInput) scenarioCreateNameInput.value = "";
+
+      const baseStart = Number.isFinite(currentScenario?.start_year)
+        ? currentScenario.start_year
+        : 2025;
+      const baseEnd = Number.isFinite(currentScenario?.end_year)
+        ? currentScenario.end_year
+        : baseStart;
+
+      if (scenarioCreateStartInput) scenarioCreateStartInput.value = toText(baseStart);
+      if (scenarioCreateEndInput) scenarioCreateEndInput.value = toText(baseEnd);
+      renderModelOptions(
+        scenarioCreateModelSelect,
+        models,
+        currentScenario?.selected_vm_yield_model_id || models[0]?.id
+      );
+      scenarioEditingId = "";
+    }
 
     scenarioModal.classList.add("is-open");
     scenarioModal.setAttribute("aria-hidden", "false");
@@ -735,31 +821,77 @@ export function initScenarioEditor({ data, onSave } = {}) {
     scenarioModal.setAttribute("aria-hidden", "true");
   }
 
-  function createScenarioFromModal() {
+  function saveScenarioFromModal() {
     const existingIds = new Set(scenarios.map((s) => s.scenario_id));
     const rawId = scenarioCreateIdInput?.value?.trim() || "";
-    const id = rawId || generateUniqueId("Scenario", existingIds);
+    const isEdit = scenarioModalMode === "edit";
+    const fallbackId = isEdit
+      ? scenarioEditingId || currentScenario?.scenario_id || ""
+      : generateUniqueId("Scenario", existingIds);
+    const id = rawId || fallbackId;
 
-    if (existingIds.has(id)) {
+    if (!id) {
+      status("Szenario-ID fehlt.");
+      return;
+    }
+
+    if (existingIds.has(id) && (!isEdit || id !== scenarioEditingId)) {
       status("Szenario-ID existiert bereits.");
       return;
     }
 
-    const start = toNumberOrNull(scenarioCreateStartInput?.value);
-    let end = toNumberOrNull(scenarioCreateEndInput?.value);
+    const startInput = toNumberOrNull(scenarioCreateStartInput?.value);
+    const endInput = toNumberOrNull(scenarioCreateEndInput?.value);
     const modelId = scenarioCreateModelSelect?.value || models[0]?.id || "";
-    const name = scenarioCreateNameInput?.value?.trim() || id;
 
-    if (Number.isFinite(start) && Number.isFinite(end) && end < start) {
-      end = start;
+    if (isEdit) {
+      const scenario =
+        scenarios.find((s) => s.scenario_id === scenarioEditingId) || currentScenario;
+      if (!scenario) {
+        status("Kein Szenario zum Bearbeiten gefunden.");
+        return;
+      }
+
+      const fallbackStart = Number.isFinite(scenario.start_year) ? scenario.start_year : 2025;
+      const fallbackEnd = Number.isFinite(scenario.end_year) ? scenario.end_year : fallbackStart;
+      const nextStart = Number.isFinite(startInput) ? startInput : fallbackStart;
+      let nextEnd = Number.isFinite(endInput) ? endInput : fallbackEnd;
+
+      if (Number.isFinite(nextStart) && Number.isFinite(nextEnd) && nextEnd < nextStart) {
+        nextEnd = nextStart;
+        status("Endjahr lag vor Startjahr und wurde angepasst.");
+      }
+
+      const nameInput = scenarioCreateNameInput?.value?.trim() || "";
+      const nextName = nameInput || scenario.name || id;
+      const prevId = scenario.scenario_id;
+
+      scenario.scenario_id = id;
+      scenario.name = nextName;
+      scenario.start_year = nextStart;
+      scenario.end_year = nextEnd;
+      scenario.selected_vm_yield_model_id = modelId;
+
+      replaceScenarioId(prevId, id);
+      refreshScenarioSelect(id);
+      selectScenario(id);
+      closeScenarioModal();
+      status("Szenario aktualisiert.");
+      return;
+    }
+
+    let end = endInput;
+    const name = scenarioCreateNameInput?.value?.trim() || id;
+    if (Number.isFinite(startInput) && Number.isFinite(end) && end < startInput) {
+      end = startInput;
       status("Endjahr lag vor Startjahr und wurde angepasst.");
     }
 
     const scenario = {
       scenario_id: id,
       name,
-      start_year: start ?? 2025,
-      end_year: end ?? start ?? 2025,
+      start_year: startInput ?? 2025,
+      end_year: end ?? startInput ?? 2025,
       selected_vm_yield_model_id: modelId
     };
 
@@ -842,35 +974,6 @@ export function initScenarioEditor({ data, onSave } = {}) {
     status("Chip-Typ hinzugefügt.");
   }
 
-  function updateScenarioId() {
-    if (!currentScenario || !scenarioIdInput) return;
-    const next = scenarioIdInput.value.trim();
-    if (!next) {
-      scenarioIdInput.value = currentScenario.scenario_id;
-      status("Szenario-ID darf nicht leer sein.");
-      return;
-    }
-    if (scenarios.some((s) => s !== currentScenario && s.scenario_id === next)) {
-      scenarioIdInput.value = currentScenario.scenario_id;
-      status("Szenario-ID existiert bereits.");
-      return;
-    }
-
-    const prev = currentScenario.scenario_id;
-    currentScenario.scenario_id = next;
-    currentScenarioId = next;
-
-    for (const fp of familyParams) {
-      if (fp.scenario_id === prev) fp.scenario_id = next;
-    }
-    for (const sy of scenarioYields) {
-      if (sy.scenario_id === prev) sy.scenario_id = next;
-    }
-
-    refreshScenarioSelect(next);
-    status(`Szenario-ID geändert: ${prev} -> ${next}`);
-  }
-
   // Init
   refreshScenarioSelect(scenarios[0]?.scenario_id || "");
   selectScenario(scenarioSelect?.value || scenarios[0]?.scenario_id || "");
@@ -885,62 +988,9 @@ export function initScenarioEditor({ data, onSave } = {}) {
     });
   }
 
-  if (scenarioIdInput) {
-    scenarioIdInput.addEventListener("change", () => {
-      if (syncing) return;
-      updateScenarioId();
-    });
-  }
-
-  if (scenarioNameInput) {
-    scenarioNameInput.addEventListener("input", () => {
-      if (!currentScenario || syncing) return;
-      currentScenario.name = scenarioNameInput.value.trim();
-      updateScenarioNameOption();
-      updateActiveScenarioLabels();
-    });
-  }
-
-  if (scenarioStartInput) {
-    scenarioStartInput.addEventListener("input", () => {
-      if (!currentScenario || syncing) return;
-      currentScenario.start_year = toNumberOrNull(scenarioStartInput.value);
-      renderScenarioList();
-      if (
-        Number.isFinite(currentScenario.start_year) &&
-        Number.isFinite(currentScenario.end_year) &&
-        currentScenario.end_year < currentScenario.start_year
-      ) {
-        status("Warnung: Endjahr liegt vor dem Startjahr.");
-      }
-    });
-  }
-
-  if (scenarioEndInput) {
-    scenarioEndInput.addEventListener("input", () => {
-      if (!currentScenario || syncing) return;
-      currentScenario.end_year = toNumberOrNull(scenarioEndInput.value);
-      renderScenarioList();
-      if (
-        Number.isFinite(currentScenario.start_year) &&
-        Number.isFinite(currentScenario.end_year) &&
-        currentScenario.end_year < currentScenario.start_year
-      ) {
-        status("Warnung: Endjahr liegt vor dem Startjahr.");
-      }
-    });
-  }
-
-  if (scenarioModelSelect) {
-    scenarioModelSelect.addEventListener("change", () => {
-      if (!currentScenario || syncing) return;
-      currentScenario.selected_vm_yield_model_id = scenarioModelSelect.value;
-      renderScenarioList();
-    });
-  }
-
-  if (scenarioOpenBtn) scenarioOpenBtn.addEventListener("click", openScenarioModal);
-  if (scenarioCreateBtn) scenarioCreateBtn.addEventListener("click", createScenarioFromModal);
+  if (scenarioOpenBtn) scenarioOpenBtn.addEventListener("click", () => openScenarioModal("create"));
+  if (scenarioEditBtn) scenarioEditBtn.addEventListener("click", () => openScenarioModal("edit"));
+  if (scenarioSaveBtn) scenarioSaveBtn.addEventListener("click", saveScenarioFromModal);
   for (const btn of scenarioCancelBtns) {
     btn.addEventListener("click", () => closeScenarioModal());
   }
@@ -954,8 +1004,10 @@ export function initScenarioEditor({ data, onSave } = {}) {
   if (familyAddBtn) familyAddBtn.addEventListener("click", addFamilyParam);
   if (yieldAddBtn) yieldAddBtn.addEventListener("click", addScenarioYield);
   if (chipAddBtn) chipAddBtn.addEventListener("click", addChipType);
-  if (saveBtn && typeof onSave === "function") {
-    saveBtn.addEventListener("click", () => onSave());
+  if (saveButtons.length && typeof onSave === "function") {
+    for (const btn of saveButtons) {
+      btn.addEventListener("click", () => onSave());
+    }
   }
 }
 
@@ -970,7 +1022,7 @@ export function initTechnologyEditor({ data, onSave } = {}) {
   const techYieldTable = document.querySelector("[data-role='technology-yield-table']");
   const techAddBtn = document.querySelector("[data-action='technology-add']");
   const techYieldAddBtn = document.querySelector("[data-action='technology-yield-add']");
-  const saveBtn = document.querySelector("#save-data");
+  const saveButtons = Array.from(document.querySelectorAll("[data-action='save-data']"));
 
   if (!techTable || !techYieldTable) {
     return;
@@ -1225,7 +1277,9 @@ export function initTechnologyEditor({ data, onSave } = {}) {
 
   if (techAddBtn) techAddBtn.addEventListener("click", addTechnology);
   if (techYieldAddBtn) techYieldAddBtn.addEventListener("click", addTechYield);
-  if (saveBtn && typeof onSave === "function") {
-    saveBtn.addEventListener("click", () => onSave());
+  if (saveButtons.length && typeof onSave === "function") {
+    for (const btn of saveButtons) {
+      btn.addEventListener("click", () => onSave());
+    }
   }
 }

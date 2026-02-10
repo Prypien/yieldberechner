@@ -18,7 +18,7 @@ let els = {
   scenarioSelect: null,
   modelSelect: null,
   scenarioChips: null,
-  saveButton: null,
+  saveButtons: [],
   recomputeButton: null,
   status: null
 };
@@ -164,11 +164,9 @@ export function initUI({
     "[data-role='scenario-chips']"
   ]);
 
-  els.saveButton = $([
-    "#save-data",
-    "#btn-save",
-    "[data-action='save']"
-  ]);
+  els.saveButtons = Array.from(
+    document.querySelectorAll("#save-data, #btn-save, [data-action='save'], [data-action='save-data']")
+  );
 
   els.recomputeButton = $([
     "#run-calc",
@@ -207,8 +205,10 @@ export function initUI({
   }
 
   // Save
-  if (els.saveButton && typeof onSave === "function") {
-    els.saveButton.addEventListener("click", () => onSave());
+  if (els.saveButtons.length && typeof onSave === "function") {
+    for (const btn of els.saveButtons) {
+      btn.addEventListener("click", () => onSave());
+    }
   }
 
   // Recompute
