@@ -2,7 +2,7 @@
  * calc.js
  * -------
  * Dieses Modul enthält NUR die Rechenlogik (pure functions):
- * - computeResults(data, scenarioId): baut die Ergebnis-Zeilen für die Output-Tabelle
+ * - computeResults(data, scenarioName): baut die Ergebnis-Zeilen für die Output-Tabelle
  * - VM Yield über vm_yield_models (Poisson/Murphy/Seeds/Bose/NegBin)
  * - Defektdichte D(yearIndex) über scenario_family_params (relativ: yearIndex = 1..N)
  * - Station-Yields (FAB/EPI/SAW/KGD/OSAT) aus scenario_yields pro Kalenderjahr
@@ -20,12 +20,12 @@ const clamp01 = (v) => {
 };
 
 function buildIndex(data) {
-  const scenariosById = new Map((data.scenarios || []).map((s) => [s.scenario_id, s]));
+  const scenariosByName = new Map((data.scenarios || []).map((s) => [s.name, s]));
   const familiesByScenarioFamily = new Map(
-    (data.scenario_family_params || []).map((fp) => [`${fp.scenario_id}||${fp.family_id}`, fp])
+    (data.scenario_family_params || []).map((fp) => [`${fp.scenario}||${fp.family}`, fp])
   );
   const scenarioYieldsByScenarioYear = new Map(
-    (data.scenario_yields || []).map((r) => [`${r.scenario_id}||${Number(r.year)}`, r])
+    (data.scenario_yields || []).map((r) => [`${r.scenario}||${Number(r.year)}`, r])
   );
   const techById = new Map((data.technologies || []).map((t) => [t.tech_id, t]));
   const modelById = new Map((data.vm_yield_models || []).map((m) => [m.id, m]));
@@ -45,7 +45,7 @@ function buildIndex(data) {
   }
 
   return {
-    scenariosById,
+    scenariosByName,
     familiesByScenarioFamily,
     scenarioYieldsByScenarioYear,
     techById,
@@ -54,17 +54,19 @@ function buildIndex(data) {
   };
 }
 
-function getScenario(index, data, scenarioId) {
-  if (scenarioId && index.scenariosById.has(scenarioId)) return index.scenariosById.get(scenarioId);
+function getScenario(index, data, scenarioName) {
+  if (scenarioName && index.scenariosByName.has(scenarioName)) {
+    return index.scenariosByName.get(scenarioName);
+  }
   return (data.scenarios || [])[0] || null;
 }
 
-function getScenarioFamilyParams(index, scenarioId, familyId) {
-  return index.familiesByScenarioFamily.get(`${scenarioId}||${familyId}`) || null;
+function getScenarioFamilyParams(index, scenarioName, familyName) {
+  return index.familiesByScenarioFamily.get(`${scenarioName}||${familyName}`) || null;
 }
 
-function getScenarioStationYields(index, scenarioId, calendarYear) {
-  return index.scenarioYieldsByScenarioYear.get(`${scenarioId}||${Number(calendarYear)}`) || null;
+function getScenarioStationYields(index, scenarioName, calendarYear) {
+  return index.scenarioYieldsByScenarioYear.get(`${scenarioName}||${Number(calendarYear)}`) || null;
 }
 
 /**
@@ -159,10 +161,10 @@ export function getTechnologyFactor(index, tech, relYear) {
  * Output-Zeile enthält:
  * - calendar year, yearIndex (relativ 1..N), chip, yields, total, VM inputs (optional)
  */
-export function computeResults(data, scenarioId, modelIdOverride = "") {
+export function computeResults(data, scenarioName, modelIdOverride = "") {
   const index = buildIndex(data);
 
-  const scenario = getScenario(index, data, scenarioId);
+  const scenario = getScenario(index, data, scenarioName);
   if (!scenario) return [];
 
   const startYear = Number(scenario.start_year);
@@ -178,10 +180,10 @@ export function computeResults(data, scenarioId, modelIdOverride = "") {
   const out = [];
 
   for (const chip of data.chip_types || []) {
-    const familyId = chip.family_id;
-    if (!familyId) continue;
+    const familyName = chip.family;
+    if (!familyName) continue;
 
-    const fp = getScenarioFamilyParams(index, scenario.scenario_id, familyId);
+    const fp = getScenarioFamilyParams(index, scenario.name, familyName);
     if (!fp) continue;
 
     const dieAreaMm2 = Number(chip.die_area_mm2 ?? 0);
@@ -196,7 +198,7 @@ export function computeResults(data, scenarioId, modelIdOverride = "") {
       if (Number.isFinite(specialStart) && year < specialStart) continue;
 
       // Station-Yields pro Kalenderjahr (wenn fehlt: default 1)
-      const sy = getScenarioStationYields(index, scenario.scenario_id, year) || {};
+      const sy = getScenarioStationYields(index, scenario.name, year) || {};
       const baseYields = {
         FAB: clamp01(sy.FAB ?? 1),
         EPI: clamp01(sy.EPI ?? 1),
@@ -240,12 +242,12 @@ export function computeResults(data, scenarioId, modelIdOverride = "") {
       const total = clamp01(YIELD_FIELDS.reduce((p, f) => p * (yields[f] ?? 1), 1));
 
       out.push({
-        scenario_id: scenario.scenario_id,
+        scenario: scenario.name,
         year,       // Kalenderjahr für Anzeige
         yearIndex,  // relativ für Debug/Details
         ttnr: chip.ttnr,
         name: chip.name,
-        family_id: familyId,
+        family: familyName,
         die_area_mm2: dieAreaMm2,
         A_cm2,
         D,

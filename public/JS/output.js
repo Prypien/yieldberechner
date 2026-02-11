@@ -124,7 +124,7 @@ export function renderResultsTable(results, table) {
     const currentFamily = familySelect.value;
 
     const years = new Set(results.map(r => r.year));
-    const families = new Set(results.map(r => r.family_id));
+    const families = new Set(results.map(r => r.family).filter(Boolean));
 
     // Only rebuild if empty (first run) or if list changed? 
     // For simplicity, rebuild but keep selection if possible
@@ -170,7 +170,7 @@ export function renderResultsTable(results, table) {
 
   const filtered = results.filter(row => {
     if (filterYearStr && String(row.year) !== filterYearStr) return false;
-    if (filterFamily && row.family_id !== filterFamily) return false;
+    if (filterFamily && row.family !== filterFamily) return false;
     if (filterTtnr && !String(row.ttnr || "").toLowerCase().includes(filterTtnr)) return false;
     if (filterName && !String(row.name || "").toLowerCase().includes(filterName)) return false;
     if (minTotal > 0 && (row.total || 0) < minTotal) return false;

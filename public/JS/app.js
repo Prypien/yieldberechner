@@ -5,7 +5,7 @@
  */
 import { loadData, saveData } from "./data.js";
 import { computeResults } from "./calc.js";
-import { initUI, getSelectedScenarioId, getSelectedModelId } from "./ui.js";
+import { initUI, getSelectedScenarioName, getSelectedModelId } from "./ui.js";
 import { renderResultsTable } from "./output.js";
 import { initScenarioEditor, initTechnologyEditor } from "./editor.js";
 
@@ -20,14 +20,14 @@ function updateStatus(text) {
   }
 }
 
-function getScenarioIdOrDefault() {
-  const selected = getSelectedScenarioId?.();
+function getScenarioNameOrDefault() {
+  const selected = getSelectedScenarioName?.();
   if (selected) return selected;
-  return data?.scenarios?.[0]?.scenario_id || "";
+  return data?.scenarios?.[0]?.name || "";
 }
 
 function recomputeAndRender() {
-  const scenarioId = getScenarioIdOrDefault();
+  const scenarioName = getScenarioNameOrDefault();
   const table = document.getElementById("results-table");
   if (!table) {
     updateStatus("Keine Ergebnis-Tabelle vorhanden.");
@@ -35,7 +35,7 @@ function recomputeAndRender() {
   }
 
   const modelId = getSelectedModelId?.();
-  const results = computeResults(data, scenarioId, modelId);
+  const results = computeResults(data, scenarioName, modelId);
 
   renderResultsTable(results, table);
   updateStatus(`${results.length} Zeilen berechnet.`);

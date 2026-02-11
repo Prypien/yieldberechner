@@ -11,7 +11,7 @@
  * wird es einfach übersprungen (damit wir HTML später umbauen können).
  */
 
-let selectedScenarioId = "";
+let selectedScenarioName = "";
 let selectedModelId = "";
 
 let els = {
@@ -45,27 +45,27 @@ function setScenarioOptions(data) {
     opt.disabled = true;
     opt.selected = true;
     select.appendChild(opt);
-    selectedScenarioId = "";
+    selectedScenarioName = "";
     renderScenarioChips(data);
     return;
   }
 
   for (const s of scenarios) {
     const opt = document.createElement("option");
-    opt.value = s.scenario_id;
-    opt.textContent = s.name || s.scenario_id;
+    opt.value = s.name || "";
+    opt.textContent = s.name || "Szenario";
     select.appendChild(opt);
   }
 
   // Auswahl setzen: vorherige Auswahl behalten, sonst erstes Szenario
-  const wanted = selectedScenarioId || scenarios[0].scenario_id;
+  const wanted = selectedScenarioName || scenarios[0].name;
   select.value = wanted;
-  selectedScenarioId = select.value || scenarios[0].scenario_id;
+  selectedScenarioName = select.value || scenarios[0].name;
 
   renderScenarioChips(data);
 }
 
-function setModelOptions(data, scenarioId) {
+function setModelOptions(data, scenarioName) {
   const select = els.modelSelect;
   if (!select) return;
 
@@ -90,7 +90,7 @@ function setModelOptions(data, scenarioId) {
     select.appendChild(opt);
   }
 
-  const scenario = (data?.scenarios || []).find((s) => s.scenario_id === scenarioId);
+  const scenario = (data?.scenarios || []).find((s) => s.name === scenarioName);
   const scenarioModelId = scenario?.selected_vm_yield_model_id || models[0].id;
   const wanted = selectedModelId || scenarioModelId;
   select.value = wanted;
@@ -114,9 +114,9 @@ function renderScenarioChips(data) {
 
   for (const s of scenarios) {
     const chip = document.createElement("span");
-    chip.className = "scenario-chip" + (s.scenario_id === selectedScenarioId ? " is-active" : "");
-    chip.textContent = s.name || s.scenario_id;
-    chip.title = s.scenario_id;
+    chip.className = "scenario-chip" + (s.name === selectedScenarioName ? " is-active" : "");
+    chip.textContent = s.name || "Szenario";
+    chip.title = s.name || "";
     wrap.appendChild(chip);
   }
 }
@@ -130,9 +130,9 @@ export function setStatus(text) {
   }
 }
 
-export function getSelectedScenarioId() {
+export function getSelectedScenarioName() {
   if (els.scenarioSelect?.value) return els.scenarioSelect.value;
-  return selectedScenarioId || "";
+  return selectedScenarioName || "";
 }
 
 export function getSelectedModelId() {
@@ -183,15 +183,15 @@ export function initUI({
 
   // Dropdown befüllen
   setScenarioOptions(data);
-  setModelOptions(data, selectedScenarioId);
+  setModelOptions(data, selectedScenarioName);
 
   // Szenario-Wechsel -> recompute
   if (els.scenarioSelect) {
     els.scenarioSelect.addEventListener("change", () => {
-      selectedScenarioId = els.scenarioSelect.value || "";
-      setModelOptions(data, selectedScenarioId);
+      selectedScenarioName = els.scenarioSelect.value || "";
+      setModelOptions(data, selectedScenarioName);
       renderScenarioChips(data);
-      if (typeof onScenarioChange === "function") onScenarioChange(selectedScenarioId);
+      if (typeof onScenarioChange === "function") onScenarioChange(selectedScenarioName);
       else if (typeof onRecompute === "function") onRecompute();
     });
   }

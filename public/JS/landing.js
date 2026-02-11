@@ -10,12 +10,12 @@ function buildScenarioCard(scenario, modelName) {
   card.className = "info-card";
 
   const title = document.createElement("h3");
-  title.textContent = scenario.name || scenario.scenario_id || "Szenario";
+  title.textContent = scenario.name || "Szenario";
 
   const meta = document.createElement("p");
   const start = scenario.start_year ?? "–";
   const end = scenario.end_year ?? "–";
-  meta.textContent = `${scenario.scenario_id} · ${start}–${end}`;
+  meta.textContent = `${start}–${end}`;
 
   const model = document.createElement("p");
   model.textContent = `Modell: ${modelName || scenario.selected_vm_yield_model_id || "–"}`;

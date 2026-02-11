@@ -217,6 +217,18 @@ function findDuplicate(list, item, predicate) {
   return list.some((row) => row !== item && predicate(row));
 }
 
+function generateUniqueName(base, existing) {
+  const clean = String(base || "").trim() || "Neu";
+  if (!existing.has(clean)) return clean;
+  let i = 2;
+  let candidate = `${clean} ${i}`;
+  while (existing.has(candidate)) {
+    i += 1;
+    candidate = `${clean} ${i}`;
+  }
+  return candidate;
+}
+
 function buildFamilyOptions(families, currentName) {
   const options = (families || [])
     .filter((f) => f.name)
@@ -281,20 +293,17 @@ export function initScenarioEditor({ data, onSave } = {}) {
   const familyAddBtn = document.querySelector("[data-action='family-param-add']");
   const yieldAddBtn = document.querySelector("[data-action='scenario-yield-add']");
   const chipAddBtn = document.querySelector("[data-action='chip-type-add']");
-  const familyMasterAddBtn = document.querySelector("[data-action='family-add']");
   const saveButtons = Array.from(document.querySelectorAll("[data-action='save-data']"));
 
   const familyParamTable = document.querySelector("[data-role='family-param-table']");
   const yieldTable = document.querySelector("[data-role='scenario-yield-table']");
   const chipTable = document.querySelector("[data-role='chip-type-table']");
-  const familyMasterTable = document.querySelector("[data-role='family-table']");
 
   const scenarioModal = document.querySelector("[data-role='scenario-modal']");
   const scenarioModalTitle = document.querySelector("[data-role='scenario-modal-title']");
   const scenarioModalHint = document.querySelector("[data-role='scenario-modal-hint']");
   const scenarioSaveBtn = document.querySelector("[data-action='scenario-save']");
   const scenarioCancelBtns = Array.from(document.querySelectorAll("[data-action='scenario-cancel']"));
-  const scenarioCreateIdInput = document.querySelector("#scenario-create-id");
   const scenarioCreateNameInput = document.querySelector("#scenario-create-name");
   const scenarioCreateStartInput = document.querySelector("#scenario-create-start");
   const scenarioCreateEndInput = document.querySelector("#scenario-create-end");
@@ -304,17 +313,15 @@ export function initScenarioEditor({ data, onSave } = {}) {
     return;
   }
 
-  let currentScenarioId = "";
+  let currentScenarioName = "";
   let currentScenario = null;
   let syncing = false;
   let scenarioModalMode = "create";
-  let scenarioEditingId = "";
+  let scenarioEditingName = "";
 
   function updateActiveScenarioLabels() {
-    const displayName = currentScenario?.name || currentScenario?.scenario_id || "–";
-    const id = currentScenario?.scenario_id || "";
-    const label =
-      id && displayName !== id ? `Aktiv: ${displayName} (${id})` : `Aktiv: ${displayName}`;
+    const displayName = currentScenario?.name || "–";
+    const label = `Aktiv: ${displayName}`;
     for (const el of activeScenarioLabels) {
       el.textContent = label;
     }
@@ -335,25 +342,25 @@ export function initScenarioEditor({ data, onSave } = {}) {
     for (const s of scenarios) {
       const btn = document.createElement("button");
       btn.type = "button";
-      btn.className = "scenario-card" + (s.scenario_id === currentScenarioId ? " is-active" : "");
-      btn.addEventListener("click", () => selectScenario(s.scenario_id));
+      btn.className = "scenario-card" + (s.name === currentScenarioName ? " is-active" : "");
+      btn.addEventListener("click", () => selectScenario(s.name));
 
       const title = document.createElement("div");
       title.className = "scenario-card-title";
-      title.textContent = s.name || s.scenario_id;
+      title.textContent = s.name || "Szenario";
 
       const meta = document.createElement("div");
       meta.className = "scenario-card-meta";
       const start = toText(s.start_year) || "–";
       const end = toText(s.end_year) || "–";
-      meta.textContent = `${s.scenario_id} · ${start}–${end}`;
+      meta.textContent = `${start}–${end}`;
 
       const model = models.find((m) => m.id === s.selected_vm_yield_model_id);
       const modelLine = document.createElement("div");
       modelLine.className = "scenario-card-meta";
       modelLine.textContent = `Modell: ${model?.name || s.selected_vm_yield_model_id || "–"}`;
 
-      if (s.scenario_id === currentScenarioId) {
+      if (s.name === currentScenarioName) {
         const tag = document.createElement("div");
         tag.className = "scenario-card-tag";
         tag.textContent = "Aktiv";
@@ -368,12 +375,12 @@ export function initScenarioEditor({ data, onSave } = {}) {
     }
   }
 
-  function selectScenario(id) {
-    currentScenario = scenarios.find((s) => s.scenario_id === id) || scenarios[0] || null;
-    currentScenarioId = currentScenario?.scenario_id || "";
+  function selectScenario(name) {
+    currentScenario = scenarios.find((s) => s.name === name) || scenarios[0] || null;
+    currentScenarioName = currentScenario?.name || "";
 
     syncing = true;
-    if (scenarioSelect) scenarioSelect.value = currentScenarioId;
+    if (scenarioSelect) scenarioSelect.value = currentScenarioName;
     syncing = false;
 
     updateActiveScenarioLabels();
@@ -389,118 +396,17 @@ export function initScenarioEditor({ data, onSave } = {}) {
     if (scenarioEditBtn) scenarioEditBtn.disabled = !scenarios.length;
   }
 
-  function renderFamiliesTable() {
-    if (!familyMasterTable) return;
-    const tbody = familyMasterTable.querySelector("tbody");
-    if (!tbody) return;
-    tbody.innerHTML = "";
-
-    if (!families.length) {
-      createEmptyRow(tbody, 4, "Noch keine Families.");
-      return;
-    }
-
-    for (const row of families) {
-      const tr = document.createElement("tr");
-
-      let lastId = row.family_id || "";
-      const idCell = createInputCell({
-        value: lastId,
-        placeholder: "FAM_28",
-        onInput: (val) => {
-          row.family_id = val.trim();
-        },
-        onCommit: (val, input) => {
-          const next = val.trim();
-          if (!next) {
-            input.value = lastId;
-            row.family_id = lastId;
-            status("Family-ID darf nicht leer sein.");
-            return;
-          }
-          if (findDuplicate(families, row, (r) => r.family_id === next)) {
-            input.value = lastId;
-            row.family_id = lastId;
-            status("Family-ID existiert bereits.");
-            return;
-          }
-
-          const prev = lastId;
-          row.family_id = next;
-          if (!row.name || row.name === prev) {
-            row.name = next;
-          }
-
-          for (const fp of familyParams) {
-            if (fp.family_id === prev) fp.family_id = next;
-          }
-          for (const chip of chipTypes) {
-            if (chip.family_id === prev) chip.family_id = next;
-          }
-
-          lastId = next;
-          renderFamilyTable();
-          renderChipTable();
-          status(`Family-ID geändert: ${prev} -> ${next}`);
-        }
-      });
-      tr.appendChild(idCell.td);
-
-      const nameCell = createInputCell({
-        value: toText(row.name),
-        placeholder: "28nm",
-        onInput: (val) => {
-          row.name = val;
-        }
-      });
-      tr.appendChild(nameCell.td);
-
-      const descCell = createInputCell({
-        value: toText(row.description),
-        placeholder: "z.B. 28nm technology family",
-        onInput: (val) => {
-          row.description = val;
-        }
-      });
-      tr.appendChild(descCell.td);
-
-      const actionTd = document.createElement("td");
-      const removeBtn = createRemoveButton(() => {
-        if (!confirm(`Family "${row.family_id}" wirklich entfernen?`)) return;
-        const removedId = row.family_id;
-        const idx = families.indexOf(row);
-        if (idx >= 0) families.splice(idx, 1);
-
-        for (let i = familyParams.length - 1; i >= 0; i -= 1) {
-          if (familyParams[i].family_id === removedId) familyParams.splice(i, 1);
-        }
-        for (const chip of chipTypes) {
-          if (chip.family_id === removedId) chip.family_id = "";
-        }
-
-        renderFamiliesTable();
-        renderFamilyTable();
-        renderChipTable();
-        status("Family entfernt und verknüpfte Daten bereinigt.");
-      });
-      actionTd.appendChild(removeBtn);
-      tr.appendChild(actionTd);
-
-      tbody.appendChild(tr);
-    }
-  }
-
   function renderFamilyTable() {
     const tbody = familyParamTable.querySelector("tbody");
     if (!tbody) return;
     tbody.innerHTML = "";
 
-    if (!currentScenarioId) {
+    if (!currentScenarioName) {
       createEmptyRow(tbody, 7, "Bitte zuerst ein Szenario wählen.");
       return;
     }
 
-    const rows = familyParams.filter((row) => row.scenario_id === currentScenarioId);
+    const rows = familyParams.filter((row) => row.scenario === currentScenarioName);
     if (!rows.length) {
       createEmptyRow(tbody, 7, "Noch keine Familienparameter.");
       return;
@@ -509,31 +415,27 @@ export function initScenarioEditor({ data, onSave } = {}) {
     for (const row of rows) {
       const tr = document.createElement("tr");
 
-      let lastFamily = row.family_id || "";
-      const familyCell = createInputCell({
+      let lastFamily = row.family || "";
+      const familyOptions = buildFamilyOptions(families, lastFamily);
+      const familyCell = createSelectCell({
+        options: familyOptions,
         value: lastFamily,
-        placeholder: "FAM_28",
-        onInput: (val) => {
-          row.family_id = val.trim();
-        },
-        onCommit: (val, input) => {
-          const next = val.trim();
+        onChange: (val, select) => {
+          const next = val;
           if (
             next &&
             findDuplicate(
               familyParams,
               row,
-              (r) => r.scenario_id === currentScenarioId && r.family_id === next
+              (r) => r.scenario === currentScenarioName && r.family === next
             )
           ) {
-            input.value = lastFamily;
-            row.family_id = lastFamily;
+            select.value = lastFamily;
+            row.family = lastFamily;
             status("Diese Family existiert bereits im Szenario.");
             return;
           }
-          row.family_id = next;
-          const created = ensureFamilyExists(data, next);
-          if (created) renderFamiliesTable();
+          row.family = next;
           lastFamily = next;
         }
       });
@@ -579,12 +481,12 @@ export function initScenarioEditor({ data, onSave } = {}) {
     if (!tbody) return;
     tbody.innerHTML = "";
 
-    if (!currentScenarioId) {
+    if (!currentScenarioName) {
       createEmptyRow(tbody, 7, "Bitte zuerst ein Szenario wählen.");
       return;
     }
 
-    const rows = scenarioYields.filter((row) => row.scenario_id === currentScenarioId);
+    const rows = scenarioYields.filter((row) => row.scenario === currentScenarioName);
     if (!rows.length) {
       createEmptyRow(tbody, 7, "Noch keine Szenario-Yields.");
       return;
@@ -609,7 +511,7 @@ export function initScenarioEditor({ data, onSave } = {}) {
             findDuplicate(
               scenarioYields,
               row,
-              (r) => r.scenario_id === currentScenarioId && Number(r.year) === Number(next)
+              (r) => r.scenario === currentScenarioName && Number(r.year) === Number(next)
             )
           ) {
             input.value = toText(lastYear);
@@ -693,12 +595,12 @@ export function initScenarioEditor({ data, onSave } = {}) {
       });
       tr.appendChild(nameCell.td);
 
-      const familyOptions = buildFamilyOptions(families, row.family_id);
+      const familyOptions = buildFamilyOptions(families, row.family);
       const familyCell = createSelectCell({
         options: familyOptions,
-        value: row.family_id || "",
+        value: row.family || "",
         onChange: (val) => {
-          row.family_id = val;
+          row.family = val;
         }
       });
       tr.appendChild(familyCell.td);
@@ -762,13 +664,13 @@ export function initScenarioEditor({ data, onSave } = {}) {
     }
   }
 
-  function replaceScenarioId(prevId, nextId) {
-    if (!prevId || prevId === nextId) return;
+  function replaceScenarioName(prevName, nextName) {
+    if (!prevName || prevName === nextName) return;
     for (const fp of familyParams) {
-      if (fp.scenario_id === prevId) fp.scenario_id = nextId;
+      if (fp.scenario === prevName) fp.scenario = nextName;
     }
     for (const sy of scenarioYields) {
-      if (sy.scenario_id === prevId) sy.scenario_id = nextId;
+      if (sy.scenario === prevName) sy.scenario = nextName;
     }
   }
 
@@ -795,8 +697,7 @@ export function initScenarioEditor({ data, onSave } = {}) {
         status("Bitte zuerst ein Szenario wählen.");
         return;
       }
-      scenarioEditingId = currentScenario.scenario_id || "";
-      if (scenarioCreateIdInput) scenarioCreateIdInput.value = toText(currentScenario.scenario_id);
+      scenarioEditingName = currentScenario.name || "";
       if (scenarioCreateNameInput) scenarioCreateNameInput.value = toText(currentScenario.name);
       if (scenarioCreateStartInput) scenarioCreateStartInput.value = toText(currentScenario.start_year);
       if (scenarioCreateEndInput) scenarioCreateEndInput.value = toText(currentScenario.end_year);
@@ -806,10 +707,9 @@ export function initScenarioEditor({ data, onSave } = {}) {
         currentScenario.selected_vm_yield_model_id || models[0]?.id
       );
     } else {
-      const existingIds = new Set(scenarios.map((s) => s.scenario_id));
-      const suggestedId = generateUniqueId("Scenario", existingIds);
-      if (scenarioCreateIdInput) scenarioCreateIdInput.value = suggestedId;
-      if (scenarioCreateNameInput) scenarioCreateNameInput.value = "";
+      const existingNames = new Set(scenarios.map((s) => s.name));
+      const suggestedName = generateUniqueName("Neues Szenario", existingNames);
+      if (scenarioCreateNameInput) scenarioCreateNameInput.value = suggestedName;
 
       const baseStart = Number.isFinite(currentScenario?.start_year)
         ? currentScenario.start_year
@@ -825,12 +725,12 @@ export function initScenarioEditor({ data, onSave } = {}) {
         models,
         currentScenario?.selected_vm_yield_model_id || models[0]?.id
       );
-      scenarioEditingId = "";
+      scenarioEditingName = "";
     }
 
     scenarioModal.classList.add("is-open");
     scenarioModal.setAttribute("aria-hidden", "false");
-    scenarioCreateIdInput?.focus();
+    scenarioCreateNameInput?.focus();
   }
 
   function closeScenarioModal() {
@@ -840,21 +740,18 @@ export function initScenarioEditor({ data, onSave } = {}) {
   }
 
   function saveScenarioFromModal() {
-    const existingIds = new Set(scenarios.map((s) => s.scenario_id));
-    const rawId = scenarioCreateIdInput?.value?.trim() || "";
+    const existingNames = new Set(scenarios.map((s) => s.name));
+    const rawName = scenarioCreateNameInput?.value?.trim() || "";
     const isEdit = scenarioModalMode === "edit";
-    const fallbackId = isEdit
-      ? scenarioEditingId || currentScenario?.scenario_id || ""
-      : generateUniqueId("Scenario", existingIds);
-    const id = rawId || fallbackId;
+    const name = rawName;
 
-    if (!id) {
-      status("Szenario-ID fehlt.");
+    if (!name) {
+      status("Szenario-Name fehlt.");
       return;
     }
 
-    if (existingIds.has(id) && (!isEdit || id !== scenarioEditingId)) {
-      status("Szenario-ID existiert bereits.");
+    if (existingNames.has(name) && (!isEdit || name !== scenarioEditingName)) {
+      status("Szenario-Name existiert bereits.");
       return;
     }
 
@@ -863,8 +760,7 @@ export function initScenarioEditor({ data, onSave } = {}) {
     const modelId = scenarioCreateModelSelect?.value || models[0]?.id || "";
 
     if (isEdit) {
-      const scenario =
-        scenarios.find((s) => s.scenario_id === scenarioEditingId) || currentScenario;
+      const scenario = scenarios.find((s) => s.name === scenarioEditingName) || currentScenario;
       if (!scenario) {
         status("Kein Szenario zum Bearbeiten gefunden.");
         return;
@@ -880,33 +776,29 @@ export function initScenarioEditor({ data, onSave } = {}) {
         status("Endjahr lag vor Startjahr und wurde angepasst.");
       }
 
-      const nameInput = scenarioCreateNameInput?.value?.trim() || "";
-      const nextName = nameInput || scenario.name || id;
-      const prevId = scenario.scenario_id;
+      const nextName = name;
+      const prevName = scenario.name;
 
-      scenario.scenario_id = id;
       scenario.name = nextName;
       scenario.start_year = nextStart;
       scenario.end_year = nextEnd;
       scenario.selected_vm_yield_model_id = modelId;
 
-      replaceScenarioId(prevId, id);
-      refreshScenarioSelect(id);
-      selectScenario(id);
+      replaceScenarioName(prevName, nextName);
+      refreshScenarioSelect(nextName);
+      selectScenario(nextName);
       closeScenarioModal();
       status("Szenario aktualisiert.");
       return;
     }
 
     let end = endInput;
-    const name = scenarioCreateNameInput?.value?.trim() || id;
     if (Number.isFinite(startInput) && Number.isFinite(end) && end < startInput) {
       end = startInput;
       status("Endjahr lag vor Startjahr und wurde angepasst.");
     }
 
     const scenario = {
-      scenario_id: id,
       name,
       start_year: startInput ?? 2025,
       end_year: end ?? startInput ?? 2025,
@@ -914,34 +806,27 @@ export function initScenarioEditor({ data, onSave } = {}) {
     };
 
     scenarios.push(scenario);
-    refreshScenarioSelect(id);
-    selectScenario(id);
+    refreshScenarioSelect(name);
+    selectScenario(name);
     closeScenarioModal();
     status("Szenario hinzugefügt.");
   }
 
-  function addFamily() {
-    const existingIds = new Set(families.map((f) => f.family_id));
-    const id = generateUniqueId("FAM", existingIds);
-    families.push({
-      family_id: id,
-      name: id,
-      description: ""
-    });
-    renderFamiliesTable();
-    status("Family hinzugefügt.");
-  }
-
   function addFamilyParam() {
-    if (!currentScenarioId) {
+    if (!currentScenarioName) {
       status("Bitte zuerst ein Szenario wählen.");
       return;
     }
 
-    const defaultFamily = families[0]?.family_id || "";
+    if (!families.length) {
+      status("Bitte zuerst eine Family in Technologien anlegen.");
+      return;
+    }
+
+    const defaultFamily = families[0]?.name || "";
     familyParams.push({
-      scenario_id: currentScenarioId,
-      family_id: defaultFamily,
+      scenario: currentScenarioName,
+      family: defaultFamily,
       D0: null,
       D_in: null,
       t: null,
@@ -953,19 +838,19 @@ export function initScenarioEditor({ data, onSave } = {}) {
   }
 
   function addScenarioYield() {
-    if (!currentScenarioId) {
+    if (!currentScenarioName) {
       status("Bitte zuerst ein Szenario wählen.");
       return;
     }
 
-    const rows = scenarioYields.filter((row) => row.scenario_id === currentScenarioId);
+    const rows = scenarioYields.filter((row) => row.scenario === currentScenarioName);
     const years = rows.map((r) => Number(r.year)).filter(Number.isFinite);
     const baseYear = Number(currentScenario?.start_year);
     const nextYear =
       years.length ? Math.max(...years) + 1 : Number.isFinite(baseYear) ? baseYear : 2025;
 
     scenarioYields.push({
-      scenario_id: currentScenarioId,
+      scenario: currentScenarioName,
       year: nextYear,
       FAB: null,
       EPI: null,
@@ -978,11 +863,11 @@ export function initScenarioEditor({ data, onSave } = {}) {
   }
 
   function addChipType() {
-    const defaultFamily = families[0]?.family_id || "";
+    const defaultFamily = families[0]?.name || "";
     chipTypes.push({
       ttnr: "",
       name: "",
-      family_id: defaultFamily,
+      family: defaultFamily,
       die_area_mm2: null,
       package: "",
       special_start_year: null,
@@ -993,9 +878,8 @@ export function initScenarioEditor({ data, onSave } = {}) {
   }
 
   // Init
-  refreshScenarioSelect(scenarios[0]?.scenario_id || "");
-  selectScenario(scenarioSelect?.value || scenarios[0]?.scenario_id || "");
-  renderFamiliesTable();
+  refreshScenarioSelect(scenarios[0]?.name || "");
+  selectScenario(scenarioSelect?.value || scenarios[0]?.name || "");
   renderChipTable();
 
   // Event wiring
@@ -1018,7 +902,6 @@ export function initScenarioEditor({ data, onSave } = {}) {
     }
   });
 
-  if (familyMasterAddBtn) familyMasterAddBtn.addEventListener("click", addFamily);
   if (familyAddBtn) familyAddBtn.addEventListener("click", addFamilyParam);
   if (yieldAddBtn) yieldAddBtn.addEventListener("click", addScenarioYield);
   if (chipAddBtn) chipAddBtn.addEventListener("click", addChipType);
@@ -1030,12 +913,16 @@ export function initScenarioEditor({ data, onSave } = {}) {
 }
 
 export function initTechnologyEditor({ data, onSave } = {}) {
+  const families = ensureArray(data, "families");
   const technologies = ensureArray(data, "technologies");
   const techYields = ensureArray(data, "technology_yields");
+  const familyParams = ensureArray(data, "scenario_family_params");
   const chipTypes = ensureArray(data, "chip_types");
 
   const status = createStatusReporter();
 
+  const familyTable = document.querySelector("[data-role='family-table']");
+  const familyAddBtn = document.querySelector("[data-action='family-add']");
   const techTable = document.querySelector("[data-role='technology-table']");
   const techYieldTable = document.querySelector("[data-role='technology-yield-table']");
   const techAddBtn = document.querySelector("[data-action='technology-add']");
@@ -1044,6 +931,108 @@ export function initTechnologyEditor({ data, onSave } = {}) {
 
   if (!techTable || !techYieldTable) {
     return;
+  }
+
+  function replaceFamilyName(prevName, nextName) {
+    if (!prevName || prevName === nextName) return;
+    for (const fp of familyParams) {
+      if (fp.family === prevName) fp.family = nextName;
+    }
+    for (const chip of chipTypes) {
+      if (chip.family === prevName) chip.family = nextName;
+    }
+  }
+
+  function removeFamilyRefs(name) {
+    if (!name) return;
+    for (let i = familyParams.length - 1; i >= 0; i -= 1) {
+      if (familyParams[i].family === name) familyParams.splice(i, 1);
+    }
+    for (const chip of chipTypes) {
+      if (chip.family === name) chip.family = "";
+    }
+  }
+
+  function renderFamilyTable() {
+    if (!familyTable) return;
+    const tbody = familyTable.querySelector("tbody");
+    if (!tbody) return;
+    tbody.innerHTML = "";
+
+    if (!families.length) {
+      createEmptyRow(tbody, 3, "Noch keine Families.");
+      return;
+    }
+
+    for (const row of families) {
+      const tr = document.createElement("tr");
+
+      let lastName = row.name || "";
+      const nameCell = createInputCell({
+        value: lastName,
+        placeholder: "28nm",
+        onInput: (val) => {
+          row.name = val;
+        },
+        onCommit: (val, input) => {
+          const next = val.trim();
+          if (!next) {
+            input.value = lastName;
+            row.name = lastName;
+            status("Family-Name darf nicht leer sein.");
+            return;
+          }
+          if (findDuplicate(families, row, (r) => r.name === next)) {
+            input.value = lastName;
+            row.name = lastName;
+            status("Family-Name existiert bereits.");
+            return;
+          }
+
+          const prev = lastName;
+          row.name = next;
+          replaceFamilyName(prev, next);
+          lastName = next;
+          if (prev && prev !== next) {
+            status(`Family-Name geändert: ${prev} -> ${next}`);
+          }
+        }
+      });
+      tr.appendChild(nameCell.td);
+
+      const descCell = createInputCell({
+        value: toText(row.description),
+        placeholder: "z.B. 28nm technology family",
+        onInput: (val) => {
+          row.description = val;
+        }
+      });
+      tr.appendChild(descCell.td);
+
+      const actionTd = document.createElement("td");
+      const removeBtn = createRemoveButton(() => {
+        if (!confirm(`Family "${row.name}" wirklich entfernen?`)) return;
+        const removedName = row.name;
+        const idx = families.indexOf(row);
+        if (idx >= 0) families.splice(idx, 1);
+
+        removeFamilyRefs(removedName);
+        renderFamilyTable();
+        status("Family entfernt und verknüpfte Daten bereinigt.");
+      });
+      actionTd.appendChild(removeBtn);
+      tr.appendChild(actionTd);
+
+      tbody.appendChild(tr);
+    }
+  }
+
+  function addFamily() {
+    const existingNames = new Set(families.map((f) => f.name));
+    const name = generateUniqueName("Family", existingNames);
+    families.push({ name, description: "" });
+    renderFamilyTable();
+    status("Family hinzugefügt.");
   }
 
   function replaceTechnologyId(prevId, nextId) {
@@ -1290,9 +1279,11 @@ export function initTechnologyEditor({ data, onSave } = {}) {
     status("Yield-Zeile hinzugefügt.");
   }
 
+  renderFamilyTable();
   renderTechTable();
   renderTechYieldTable();
 
+  if (familyAddBtn) familyAddBtn.addEventListener("click", addFamily);
   if (techAddBtn) techAddBtn.addEventListener("click", addTechnology);
   if (techYieldAddBtn) techYieldAddBtn.addEventListener("click", addTechYield);
   if (saveButtons.length && typeof onSave === "function") {
