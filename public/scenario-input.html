@@ -1,12 +1,14 @@
 <!DOCTYPE html>
 <!-- Input-Page: Szenarien, Familienparameter, Yields und Chips pflegen -->
 <html lang="de">
+
 <head>
   <meta charset="UTF-8" />
   <title>Yield Berechner · Szenario-Inputs</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="/styles.css" />
 </head>
+
 <body>
   <div class="app">
     <header class="app-header">
@@ -50,39 +52,7 @@
       </div>
     </section>
 
-    <section class="input-panel">
-      <div class="panel-header">
-        <div>
-          <h2>Familien</h2>
-          <p>Globale Families (nicht szenario-spezifisch).</p>
-        </div>
-      </div>
 
-      <div class="table-wrap">
-        <table class="data-table" data-role="family-table">
-          <thead>
-            <tr>
-              <th>Family-ID</th>
-              <th>Name</th>
-              <th>Beschreibung</th>
-              <th>Aktion</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td><input type="text" placeholder="FAM_28" /></td>
-              <td><input type="text" placeholder="28nm" /></td>
-              <td><input type="text" placeholder="z.B. 28nm technology family" /></td>
-              <td><button class="btn btn-secondary" type="button">Entfernen</button></td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      <div class="control-actions">
-        <button class="btn" type="button" data-action="family-add">Family hinzufügen</button>
-        <button class="btn btn-save" type="button" data-action="save-data">Daten speichern</button>
-      </div>
-    </section>
 
     <section class="input-panel">
       <div class="panel-header">
@@ -224,16 +194,14 @@
       <div class="modal-header">
         <div>
           <h2 id="scenario-modal-title" data-role="scenario-modal-title">Neues Szenario</h2>
-          <p data-role="scenario-modal-hint">Lege ein neues Szenario an und wähle danach das aktive Szenario oben aus.</p>
+          <p data-role="scenario-modal-hint">Lege ein neues Szenario an und wähle danach das aktive Szenario oben aus.
+          </p>
         </div>
         <button class="btn btn-secondary" type="button" data-action="scenario-cancel">Schließen</button>
       </div>
 
       <div class="form-grid">
-        <div class="form-field">
-          <label for="scenario-create-id">Scenario-ID</label>
-          <input id="scenario-create-id" type="text" placeholder="z.B. Baseline_2" />
-        </div>
+
         <div class="form-field">
           <label for="scenario-create-name">Szenario-Name</label>
           <input id="scenario-create-name" type="text" placeholder="z.B. Ramp-up 2027" />
@@ -261,4 +229,5 @@
 
   <script type="module" src="/JS/app.js"></script>
 </body>
+
 </html>

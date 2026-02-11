@@ -30,18 +30,18 @@ function emptyData() {
   const now = new Date().toISOString();
   return {
     meta: {
-      schema_version: 1,
+      schema_version: 2,
       created_at: now,
       updated_at: now
     },
-    families: [],
-    chip_types: [],
-    vm_yield_models: [],
-    scenarios: [],
-    scenario_family_params: [],
-    scenario_yields: [],
-    technologies: [],
-    technology_yields: []
+    families: [], // [{ name: "28nm", description: "..." }]
+    chip_types: [], // [{ ttnr: "...", name: "...", family: "28nm", ... }]
+    vm_yield_models: [], // loaded from static/default if empty
+    scenarios: [], // [{ name: "Base", start_year: 2025, end_year: 2030, ... }]
+    scenario_family_params: [], // [{ scenario: "Base", family: "28nm", ... }]
+    scenario_yields: [], // [{ scenario: "Base", year: 2025, ... }]
+    technologies: [], // [{ name: "TechA", ... }]
+    technology_yields: [] // [{ tech: "TechA", year: 1, yield: 0.99 }]
   };
 }
 

@@ -164,7 +164,7 @@ function createRemoveButton(onRemove) {
   return btn;
 }
 
-function renderScenarioOptions(select, scenarios, selectedId) {
+function renderScenarioOptions(select, scenarios, selectedName) {
   if (!select) return;
   select.innerHTML = "";
 
@@ -180,12 +180,12 @@ function renderScenarioOptions(select, scenarios, selectedId) {
 
   for (const s of scenarios) {
     const opt = document.createElement("option");
-    opt.value = s.scenario_id;
-    opt.textContent = s.name || s.scenario_id;
+    opt.value = s.name;
+    opt.textContent = s.name;
     select.appendChild(opt);
   }
 
-  const next = selectedId || scenarios[0].scenario_id;
+  const next = selectedName || scenarios[0].name;
   select.value = next;
 }
 
@@ -213,45 +213,21 @@ function renderModelOptions(select, models, selectedId) {
   select.value = selectedId || models[0].id;
 }
 
-function ensureFamilyExists(data, familyId) {
-  if (!familyId) return null;
-  const families = ensureArray(data, "families");
-  const existing = families.find((f) => f.family_id === familyId);
-  if (existing) return existing;
-  const row = {
-    family_id: familyId,
-    name: familyId,
-    description: ""
-  };
-  families.push(row);
-  return row;
-}
-
 function findDuplicate(list, item, predicate) {
   return list.some((row) => row !== item && predicate(row));
 }
 
-function generateUniqueId(prefix, existingIds) {
-  let idx = 1;
-  let candidate = `${prefix}_${idx}`;
-  while (existingIds.has(candidate)) {
-    idx += 1;
-    candidate = `${prefix}_${idx}`;
-  }
-  return candidate;
-}
-
-function buildFamilyOptions(families, currentId) {
+function buildFamilyOptions(families, currentName) {
   const options = (families || [])
-    .filter((f) => f.family_id)
+    .filter((f) => f.name)
     .map((f) => ({
-      value: f.family_id,
-      label: f.name ? `${f.name} (${f.family_id})` : f.family_id
+      value: f.name,
+      label: f.name
     }));
 
   const known = new Set(options.map((opt) => opt.value));
-  if (currentId && !known.has(currentId)) {
-    options.push({ value: currentId, label: `${currentId} (nicht gefunden)` });
+  if (currentName && !known.has(currentName)) {
+    options.push({ value: currentName, label: `${currentName} (nicht gefunden)` });
   }
 
   if (!options.length) {

@@ -26,6 +26,38 @@
     <section class="input-panel">
       <div class="panel-header">
         <div>
+          <h2>Familien</h2>
+          <p>Globale Families (nicht szenario-spezifisch).</p>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table class="data-table" data-role="family-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Beschreibung</th>
+              <th>Aktion</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><input type="text" placeholder="28nm" /></td>
+              <td><input type="text" placeholder="z.B. 28nm technology family" /></td>
+              <td><button class="btn btn-secondary" type="button">Entfernen</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="control-actions">
+        <button class="btn" type="button" data-action="family-add">Family hinzufügen</button>
+        <button class="btn btn-save" type="button" data-action="save-data">Daten speichern</button>
+      </div>
+    </section>
+
+    <section class="input-panel">
+      <div class="panel-header">
+        <div>
           <h2>Technologien</h2>
           <p>Dynamisch oder statisch, Ziel-Feld inklusive.</p>
         </div>
