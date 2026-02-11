@@ -2,7 +2,7 @@
   "meta": {
     "schema_version": 2,
     "created_at": "2026-02-02T00:00:00.000Z",
-    "updated_at": "2026-02-11T12:56:11.531Z",
+    "updated_at": "2026-02-11T15:32:54.641Z",
     "note": "Base dataset. VM yield is computed via yield models. FAB/EPI/SAW/KGD/OSAT are scenario base yields."
   },
   "families": [
@@ -17,6 +17,10 @@
     {
       "name": "J7",
       "description": "J7 Family"
+    },
+    {
+      "name": "B12",
+      "description": "B12 Family"
     }
   ],
   "chip_types": [
@@ -24,10 +28,13 @@
       "ttnr": "1111111111",
       "name": "Example Chip A",
       "family": "28nm",
-      "die_area_mm2": 33,
+      "die_area_mm2": 7.4,
       "package": "QFN",
       "special_start_year": null,
-      "technologies": []
+      "technologies": [
+        "TECH_SAKASA",
+        "TECH_OSAT_PLUS"
+      ]
     },
     {
       "ttnr": "2222222222",
@@ -136,6 +143,12 @@
       "start_year": 2026,
       "end_year": 2036,
       "selected_vm_yield_model_id": "YM_BOSE"
+    },
+    {
+      "name": "Beispiel Niklas",
+      "start_year": 2027,
+      "end_year": 2037,
+      "selected_vm_yield_model_id": "YM_POI"
     }
   ],
   "scenario_family_params": [
@@ -192,6 +205,15 @@
       "t": 0.99,
       "t_start": 1,
       "t_end": 9
+    },
+    {
+      "scenario": "T27",
+      "family": "B12",
+      "D0": 0.79,
+      "D_in": 0.71,
+      "t": 0.12,
+      "t_start": 1,
+      "t_end": 5
     }
   ],
   "scenario_yields": [
