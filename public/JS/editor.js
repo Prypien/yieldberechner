@@ -1057,6 +1057,32 @@ export function initTechnologyEditor({ data, onSave } = {}) {
     }
   }
 
+  const techYieldSelect = document.querySelector("#tech-yield-select");
+  let activeYieldTechId = "";
+
+  function updateTechYieldSelect() {
+    if (!techYieldSelect) return;
+    const dynamicTechs = technologies.filter((t) => Number(t.is_dynamic));
+    techYieldSelect.innerHTML = '<option value="">-- Tech wählen --</option>';
+
+    for (const t of dynamicTechs) {
+      const opt = document.createElement("option");
+      opt.value = t.tech_id;
+      opt.textContent = t.name ? `${t.name} (${t.tech_id})` : t.tech_id;
+      techYieldSelect.appendChild(opt);
+    }
+
+    if (activeYieldTechId && dynamicTechs.some(t => t.tech_id === activeYieldTechId)) {
+      techYieldSelect.value = activeYieldTechId;
+    } else if (dynamicTechs.length > 0) {
+      activeYieldTechId = dynamicTechs[0].tech_id;
+      techYieldSelect.value = activeYieldTechId;
+    } else {
+      activeYieldTechId = "";
+      techYieldSelect.value = "";
+    }
+  }
+
   function renderTechTable() {
     const tbody = techTable.querySelector("tbody");
     if (!tbody) return;
@@ -1090,6 +1116,7 @@ export function initTechnologyEditor({ data, onSave } = {}) {
           replaceTechnologyId(prev, next);
           lastId = next;
           if (prev && prev !== next) {
+            updateTechYieldSelect();
             renderTechYieldTable();
             status(`Tech-ID geändert: ${prev} -> ${next}`);
           }
@@ -1102,6 +1129,9 @@ export function initTechnologyEditor({ data, onSave } = {}) {
         placeholder: "Sakasa",
         onInput: (val) => {
           row.name = val;
+        },
+        onCommit: () => {
+          updateTechYieldSelect();
         }
       });
       tr.appendChild(nameCell.td);
@@ -1129,6 +1159,8 @@ export function initTechnologyEditor({ data, onSave } = {}) {
         value: Number(row.is_dynamic) ? "1" : "0",
         onChange: (val) => {
           row.is_dynamic = Number(val);
+          updateTechYieldSelect();
+          renderTechYieldTable();
         }
       });
       tr.appendChild(dynamicCell.td);
@@ -1150,6 +1182,7 @@ export function initTechnologyEditor({ data, onSave } = {}) {
         if (idx >= 0) technologies.splice(idx, 1);
         removeTechnologyRefs(row.tech_id);
         renderTechTable();
+        updateTechYieldSelect();
         renderTechYieldTable();
         status("Technologie entfernt und Verknüpfungen bereinigt.");
       });
@@ -1165,41 +1198,19 @@ export function initTechnologyEditor({ data, onSave } = {}) {
     if (!tbody) return;
     tbody.innerHTML = "";
 
-    if (!techYields.length) {
-      createEmptyRow(tbody, 4, "Noch keine Yield-Zeilen.");
+    if (!activeYieldTechId) {
+      createEmptyRow(tbody, 3, "Keine dynamische Technologie gewählt.");
       return;
     }
 
-    for (const row of techYields) {
-      const tr = document.createElement("tr");
+    const rows = techYields.filter((row) => row.tech_id === activeYieldTechId);
+    if (!rows.length) {
+      createEmptyRow(tbody, 3, `Noch keine Yield-Zeilen für ${activeYieldTechId}.`);
+      return;
+    }
 
-      let lastTech = row.tech_id || "";
-      const techCell = createInputCell({
-        value: lastTech,
-        placeholder: "TECH_SAKASA",
-        onInput: (val) => {
-          row.tech_id = val.trim();
-        },
-        onCommit: (val, input) => {
-          const next = val.trim();
-          if (
-            next &&
-            findDuplicate(
-              techYields,
-              row,
-              (r) => r.tech_id === next && Number(r.year) === Number(row.year)
-            )
-          ) {
-            input.value = lastTech;
-            row.tech_id = lastTech;
-            status("Diese Tech/Yield-Kombination existiert bereits.");
-            return;
-          }
-          row.tech_id = next;
-          lastTech = next;
-        }
-      });
-      tr.appendChild(techCell.td);
+    for (const row of rows) {
+      const tr = document.createElement("tr");
 
       let lastYear = row.year ?? "";
       const yearCell = createInputCell({
@@ -1222,7 +1233,7 @@ export function initTechnologyEditor({ data, onSave } = {}) {
           ) {
             input.value = toText(lastYear);
             row.year = lastYear;
-            status("Diese Tech/Yield-Kombination existiert bereits.");
+            status("Dieses Jahr existiert bereits für diese Technologie.");
             return;
           }
           row.year = next;
@@ -1265,23 +1276,40 @@ export function initTechnologyEditor({ data, onSave } = {}) {
       static_yield: null
     });
     renderTechTable();
+    updateTechYieldSelect();
     status("Technologie hinzugefügt.");
   }
 
   function addTechYield() {
-    const defaultTech = technologies[0]?.tech_id || "";
+    if (!activeYieldTechId) {
+      status("Bitte zuerst eine dynamische Technologie im Dropdown wählen.");
+      return;
+    }
+
+    const rows = techYields.filter((r) => r.tech_id === activeYieldTechId);
+    const years = rows.map((r) => Number(r.year)).filter(Number.isFinite);
+    const nextYear = years.length ? Math.max(...years) + 1 : 1;
+
     techYields.push({
-      tech_id: defaultTech,
-      year: 1,
+      tech_id: activeYieldTechId,
+      year: nextYear,
       yield: null
     });
     renderTechYieldTable();
-    status("Yield-Zeile hinzugefügt.");
+    status(`Yield-Zeile für ${activeYieldTechId} hinzugefügt.`);
   }
 
   renderFamilyTable();
   renderTechTable();
+  updateTechYieldSelect();
   renderTechYieldTable();
+
+  if (techYieldSelect) {
+    techYieldSelect.addEventListener("change", () => {
+      activeYieldTechId = techYieldSelect.value;
+      renderTechYieldTable();
+    });
+  }
 
   if (familyAddBtn) familyAddBtn.addEventListener("click", addFamily);
   if (techAddBtn) techAddBtn.addEventListener("click", addTechnology);
@@ -1291,4 +1319,5 @@ export function initTechnologyEditor({ data, onSave } = {}) {
       btn.addEventListener("click", () => onSave());
     }
   }
+
 }

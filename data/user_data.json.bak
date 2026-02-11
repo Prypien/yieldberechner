@@ -2,7 +2,7 @@
   "meta": {
     "schema_version": 2,
     "created_at": "2026-02-02T00:00:00.000Z",
-    "updated_at": "2026-02-11T12:37:43.669Z",
+    "updated_at": "2026-02-11T12:56:03.400Z",
     "note": "Base dataset. VM yield is computed via yield models. FAB/EPI/SAW/KGD/OSAT are scenario base yields."
   },
   "families": [
@@ -12,7 +12,11 @@
     },
     {
       "name": "FAM_29",
-      "description": ""
+      "description": "29 Nanometer"
+    },
+    {
+      "name": "J7",
+      "description": "J7 Family"
     }
   ],
   "chip_types": [
@@ -20,35 +24,37 @@
       "ttnr": "1111111111",
       "name": "Example Chip A",
       "family": "28nm",
-      "die_area_mm2": 50,
+      "die_area_mm2": 33,
       "package": "QFN",
       "special_start_year": null,
-      "technologies": [
-        "TECH_SAKASA"
-      ]
+      "technologies": []
     },
     {
       "ttnr": "2222222222",
       "name": "Example Chip B",
-      "family": "FAM_29",
-      "die_area_mm2": 80,
+      "family": "28nm",
+      "die_area_mm2": 78,
       "package": "BGA",
       "special_start_year": 2026,
-      "technologies": [
-        "TECH_SAKASA",
-        "TECH_OSAT_PLUS"
-      ]
+      "technologies": []
     },
     {
       "ttnr": "3333333333",
       "name": "Example Chip C",
       "family": "28nm",
-      "die_area_mm2": 22,
+      "die_area_mm2": 98,
       "package": "D2Pack",
       "special_start_year": 2027,
-      "technologies": [
-        "TECH_OSAT_PLUS"
-      ]
+      "technologies": []
+    },
+    {
+      "ttnr": "4444444444",
+      "name": "PMJX04SO",
+      "family": "J7",
+      "die_area_mm2": 70,
+      "package": "D2Pack",
+      "special_start_year": 2026,
+      "technologies": []
     }
   ],
   "vm_yield_models": [
@@ -124,6 +130,12 @@
       "start_year": 2026,
       "end_year": 2036,
       "selected_vm_yield_model_id": "YM_BOSE"
+    },
+    {
+      "name": "T30",
+      "start_year": 2026,
+      "end_year": 2036,
+      "selected_vm_yield_model_id": "YM_BOSE"
     }
   ],
   "scenario_family_params": [
@@ -153,6 +165,33 @@
       "t": 0.18,
       "t_start": 2,
       "t_end": 5
+    },
+    {
+      "scenario": "T30",
+      "family": "28nm",
+      "D0": 0.11,
+      "D_in": 0.2,
+      "t": 0.4,
+      "t_start": 1,
+      "t_end": 9
+    },
+    {
+      "scenario": "T27",
+      "family": "J7",
+      "D0": 0.79,
+      "D_in": 0.66,
+      "t": 0.1,
+      "t_start": 1,
+      "t_end": 9
+    },
+    {
+      "scenario": "T30",
+      "family": "J7",
+      "D0": 0.3,
+      "D_in": 0.9,
+      "t": 0.99,
+      "t_start": 1,
+      "t_end": 9
     }
   ],
   "scenario_yields": [
@@ -254,6 +293,105 @@
       "SAW": null,
       "KGD": null,
       "OSAT": null
+    },
+    {
+      "scenario": "T30",
+      "year": 2026,
+      "FAB": 0.98,
+      "EPI": 0.94,
+      "SAW": 0.99,
+      "KGD": 0.98,
+      "OSAT": 0.99
+    },
+    {
+      "scenario": "T30",
+      "year": 2027,
+      "FAB": 0.98,
+      "EPI": 0.94,
+      "SAW": 0.99,
+      "KGD": 0.98,
+      "OSAT": 0.99
+    },
+    {
+      "scenario": "T30",
+      "year": 2028,
+      "FAB": 0.98,
+      "EPI": 0.94,
+      "SAW": 0.99,
+      "KGD": 0.98,
+      "OSAT": 0.99
+    },
+    {
+      "scenario": "T30",
+      "year": 2029,
+      "FAB": 0.98,
+      "EPI": 0.94,
+      "SAW": 0.99,
+      "KGD": 0.98,
+      "OSAT": 0.99
+    },
+    {
+      "scenario": "T30",
+      "year": 2030,
+      "FAB": 0.98,
+      "EPI": 0.94,
+      "SAW": 0.99,
+      "KGD": 0.98,
+      "OSAT": 0.99
+    },
+    {
+      "scenario": "T30",
+      "year": 2031,
+      "FAB": 0.98,
+      "EPI": 0.94,
+      "SAW": 0.99,
+      "KGD": 0.98,
+      "OSAT": 0.99
+    },
+    {
+      "scenario": "T30",
+      "year": 2032,
+      "FAB": 0.98,
+      "EPI": 0.94,
+      "SAW": 0.99,
+      "KGD": 0.98,
+      "OSAT": 0.99
+    },
+    {
+      "scenario": "T30",
+      "year": 2033,
+      "FAB": 0.98,
+      "EPI": 0.94,
+      "SAW": 0.99,
+      "KGD": 0.98,
+      "OSAT": 0.99
+    },
+    {
+      "scenario": "T30",
+      "year": 2034,
+      "FAB": 0.98,
+      "EPI": 0.94,
+      "SAW": 0.99,
+      "KGD": 0.98,
+      "OSAT": 0.99
+    },
+    {
+      "scenario": "T30",
+      "year": 2035,
+      "FAB": 0.98,
+      "EPI": 0.94,
+      "SAW": 0.99,
+      "KGD": 0.98,
+      "OSAT": 0.99
+    },
+    {
+      "scenario": "T30",
+      "year": 2036,
+      "FAB": 0.98,
+      "EPI": 0.94,
+      "SAW": 0.99,
+      "KGD": 0.98,
+      "OSAT": 0.99
     }
   ],
   "technologies": [
@@ -321,6 +459,26 @@
       "tech_id": "TECH_NANO",
       "year": 1,
       "yield": 0.95
+    },
+    {
+      "tech_id": "TECH_NANO",
+      "year": 2,
+      "yield": 0.97
+    },
+    {
+      "tech_id": "TECH_NANO",
+      "year": 3,
+      "yield": 0.98
+    },
+    {
+      "tech_id": "TECH_NANO",
+      "year": 4,
+      "yield": 0.99
+    },
+    {
+      "tech_id": "TECH_NANO",
+      "year": 5,
+      "yield": 0.99
     }
   ]
 }
