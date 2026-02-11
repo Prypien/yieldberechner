@@ -2,7 +2,7 @@
   "meta": {
     "schema_version": 2,
     "created_at": "2026-02-02T00:00:00.000Z",
-    "updated_at": "2026-02-10T13:03:51.322Z",
+    "updated_at": "2026-02-11T12:38:35.392Z",
     "note": "Base dataset. VM yield is computed via yield models. FAB/EPI/SAW/KGD/OSAT are scenario base yields."
   },
   "families": [
@@ -12,7 +12,7 @@
     },
     {
       "name": "FAM_29",
-      "description": ""
+      "description": "29 Nanometer"
     }
   ],
   "chip_types": [
@@ -30,7 +30,7 @@
     {
       "ttnr": "2222222222",
       "name": "Example Chip B",
-      "family": "28nm",
+      "family": "FAM_29",
       "die_area_mm2": 80,
       "package": "BGA",
       "special_start_year": 2026,
@@ -321,6 +321,11 @@
       "tech_id": "TECH_NANO",
       "year": 1,
       "yield": 0.95
+    },
+    {
+      "tech_id": "TECH_SAKASA",
+      "year": 1,
+      "yield": null
     }
   ]
 }
