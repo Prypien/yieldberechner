@@ -24,46 +24,547 @@
     }
   ],
   "chip_types": [
-    {
-      "ttnr": "1111111111",
-      "name": "Example Chip A",
-      "family": "28nm",
-      "die_area_mm2": 7.4,
-      "package": "QFN",
-      "special_start_year": null,
-      "technologies": [
-        "TECH_SAKASA",
-        "TECH_OSAT_PLUS"
-      ]
-    },
-    {
-      "ttnr": "2222222222",
-      "name": "Example Chip B",
-      "family": "28nm",
-      "die_area_mm2": 78,
-      "package": "BGA",
-      "special_start_year": 2026,
-      "technologies": []
-    },
-    {
-      "ttnr": "3333333333",
-      "name": "Example Chip C",
-      "family": "28nm",
-      "die_area_mm2": 98,
-      "package": "D2Pack",
-      "special_start_year": 2027,
-      "technologies": []
-    },
-    {
-      "ttnr": "4444444444",
-      "name": "PMJX04SO",
-      "family": "J7",
-      "die_area_mm2": 70,
-      "package": "D2Pack",
-      "special_start_year": 2026,
-      "technologies": []
-    }
-  ],
+  {
+    "ttnr": "251014_PMBX_17_200_Wafer_PMBX_17mm2",
+    "name": "PMBXFSO_17mm2_B12",
+    "family": "B12",
+    "die_area_mm2": 17,
+    "package": "Bare-Die",
+    "special_start_year": null,
+    "technologies": []
+  },
+  {
+    "ttnr": null,
+    "name": "PMBXFSO_19mm2_B12",
+    "family": "B12",
+    "die_area_mm2": 19,
+    "package": "Bare-Die",
+    "special_start_year": null,
+    "technologies": []
+  },
+  {
+    "ttnr": null,
+    "name": "PMBX13SO",
+    "family": "B12",
+    "die_area_mm2": 20,
+    "package": "Bare-Die",
+    "special_start_year": null,
+    "technologies": []
+  },
+  {
+    "ttnr": null,
+    "name": "PMBXFSO_21mm2_B12",
+    "family": "B12",
+    "die_area_mm2": 21,
+    "package": "Bare-Die",
+    "special_start_year": null,
+    "technologies": []
+  },
+  {
+    "ttnr": "D.3.0.006.EVOB",
+    "name": "PMBX02SO",
+    "family": "B12",
+    "die_area_mm2": 23,
+    "package": "Bare-Die",
+    "special_start_year": null,
+    "technologies": []
+  },
+  {
+    "ttnr": "1277.381.100",
+    "name": "PMBX03SO",
+    "family": "B12",
+    "die_area_mm2": 25,
+    "package": "Bare-Die",
+    "special_start_year": null,
+    "technologies": []
+  },
+  {
+    "ttnr": "D.3.1.004.EVOB",
+    "name": "PMBX08SO",
+    "family": "B12",
+    "die_area_mm2": 25,
+    "package": "Bare-Die",
+    "special_start_year": null,
+    "technologies": []
+  },
+  {
+    "ttnr": null,
+    "name": "PMBX14SO",
+    "family": "B12",
+    "die_area_mm2": 25,
+    "package": "Bare-Die",
+    "special_start_year": null,
+    "technologies": []
+  },
+  {
+    "ttnr": null,
+    "name": "PMBX15SO",
+    "family": "B12",
+    "die_area_mm2": 30,
+    "package": "Bare-Die",
+    "special_start_year": null,
+    "technologies": []
+  },
+  {
+    "ttnr": "D.3.1.005.EVOB",
+    "name": "PMBX09SO",
+    "family": "B12",
+    "die_area_mm2": 33,
+    "package": "Bare-Die",
+    "special_start_year": null,
+    "technologies": []
+  },
+  {
+    "ttnr": null,
+    "name": "PMBX16SO",
+    "family": "B12",
+    "die_area_mm2": 35,
+    "package": "Bare-Die",
+    "special_start_year": null,
+    "technologies": []
+  },
+  {
+    "ttnr": "D.3.1.006.EVOB",
+    "name": "PMBX10SO",
+    "family": "B12",
+    "die_area_mm2": 36,
+    "package": "Bare-Die",
+    "special_start_year": null,
+    "technologies": []
+  },
+  {
+    "ttnr": "251007_PMBX_49_200_Wafer_PMBX_49mm2",
+    "name": "PMBXFSO_49mm2_B12",
+    "family": "B12",
+    "die_area_mm2": 49,
+    "package": "Bare-Die",
+    "special_start_year": null,
+    "technologies": []
+  },
+  {
+    "ttnr": "D.3.1.003.EVOB",
+    "name": "PMBX07SO",
+    "family": "B12",
+    "die_area_mm2": 55,
+    "package": "Bare-Die",
+    "special_start_year": null,
+    "technologies": []
+  },
+  {
+    "ttnr": "1277.381.102",
+    "name": "PMBX05SO",
+    "family": "B12",
+    "die_area_mm2": 40,
+    "package": "Bare-Die",
+    "special_start_year": null,
+    "technologies": []
+  },
+  {
+    "ttnr": "D.3.1.001.EVOB",
+    "name": "PMBX06SO",
+    "family": "B12",
+    "die_area_mm2": 79,
+    "package": "Bare-Die",
+    "special_start_year": null,
+    "technologies": []
+  },
+  {
+    "ttnr": "D.3.1.007.EVOB",
+    "name": "PMBX11SO",
+    "family": "B12",
+    "die_area_mm2": 38,
+    "package": "Bare-Die",
+    "special_start_year": null,
+    "technologies": []
+  },
+  {
+    "ttnr": "D.3.1.008.EVOB",
+    "name": "PMBX12SO",
+    "family": "B12",
+    "die_area_mm2": 43,
+    "package": "Bare-Die",
+    "special_start_year": null,
+    "technologies": []
+  },
+  {
+    "ttnr": null,
+    "name": "PMBWFSO_20mm2_B7",
+    "family": "B7",
+    "die_area_mm2": 20,
+    "package": "Bare-Die",
+    "special_start_year": null,
+    "technologies": []
+  },
+  {
+    "ttnr": "D.3.0.004.EVOB",
+    "name": "PMBW04SO",
+    "family": "B7",
+    "die_area_mm2": 22,
+    "package": "Bare-Die",
+    "special_start_year": null,
+    "technologies": []
+  },
+  {
+    "ttnr": "1277.381.106",
+    "name": "PMBW03SO",
+    "family": "B7",
+    "die_area_mm2": 25,
+    "package": "Bare-Die",
+    "special_start_year": null,
+    "technologies": []
+  },
+  {
+    "ttnr": "D.3.0.001.EVOB",
+    "name": "PMBW02SO",
+    "family": "B7",
+    "die_area_mm2": 23,
+    "package": "Bare-Die",
+    "special_start_year": null,
+    "technologies": []
+  },
+  {
+    "ttnr": null,
+    "name": "PMFWSO_21mm2_F7",
+    "family": "J7",
+    "die_area_mm2": 21,
+    "package": "Bare-Die",
+    "special_start_year": null,
+    "technologies": []
+  },
+  {
+    "ttnr": "1277.381.098",
+    "name": "PMFX01SO",
+    "family": "F12",
+    "die_area_mm2": 7.4,
+    "package": "Bare-Die",
+    "special_start_year": null,
+    "technologies": []
+  },
+  {
+    "ttnr": "D.3.2.001.EVOB",
+    "name": "PMFX02SO",
+    "family": "F12",
+    "die_area_mm2": 23,
+    "package": "Bare-Die",
+    "special_start_year": null,
+    "technologies": []
+  },
+  {
+    "ttnr": "D.3.2.002.EVOB",
+    "name": "PMFX03SO",
+    "family": "F12",
+    "die_area_mm2": 25,
+    "package": "Bare-Die",
+    "special_start_year": null,
+    "technologies": []
+  },
+  {
+    "ttnr": "D.3.3.001.EVOB",
+    "name": "PMJW02SB",
+    "family": "J7",
+    "die_area_mm2": 27,
+    "package": "Discrete (Sägerahmen)",
+    "special_start_year": null,
+    "technologies": []
+  },
+  {
+    "ttnr": "1277.381.071",
+    "name": "PMJW03SO",
+    "family": "J7",
+    "die_area_mm2": 27.1,
+    "package": "Bare-Die",
+    "special_start_year": null,
+    "technologies": []
+  },
+  {
+    "ttnr": "1277.381.072",
+    "name": "PMJW04SO",
+    "family": "J7",
+    "die_area_mm2": 23.4,
+    "package": "Bare-Die",
+    "special_start_year": null,
+    "technologies": []
+  },
+  {
+    "ttnr": "1277.381.069",
+    "name": "PMJW06SO",
+    "family": "J7",
+    "die_area_mm2": 23.8048,
+    "package": "Bare-Die",
+    "special_start_year": null,
+    "technologies": []
+  },
+  {
+    "ttnr": "0270.248.136",
+    "name": "PMJW07SE",
+    "family": "J7",
+    "die_area_mm2": 14.61,
+    "package": "Discrete (Sägerahmen)",
+    "special_start_year": null,
+    "technologies": []
+  },
+  {
+    "ttnr": "0270.248.137",
+    "name": "PMJW08SE",
+    "family": "J7",
+    "die_area_mm2": 7.4,
+    "package": "Discrete (Sägerahmen)",
+    "special_start_year": null,
+    "technologies": []
+  },
+  {
+    "ttnr": "1277.381.083",
+    "name": "PMJW11SO",
+    "family": "J7",
+    "die_area_mm2": 32,
+    "package": "Bare-Die",
+    "special_start_year": null,
+    "technologies": []
+  },
+  {
+    "ttnr": "D.3.3.010.EVOB",
+    "name": "PMJW14SD",
+    "family": "J7",
+    "die_area_mm2": 14.3,
+    "package": "Discrete (Sägerahmen)",
+    "special_start_year": null,
+    "technologies": []
+  },
+  {
+    "ttnr": "251002_PMJW_17",
+    "name": "PMJWSO_17mm2",
+    "family": "J7",
+    "die_area_mm2": 17,
+    "package": "Bare-Die",
+    "special_start_year": null,
+    "technologies": []
+  },
+  {
+    "ttnr": "D.3.3.011.EVOB",
+    "name": "PMJW17SO",
+    "family": "J7",
+    "die_area_mm2": 17,
+    "package": "Bare-Die",
+    "special_start_year": null,
+    "technologies": []
+  },
+  {
+    "ttnr": "1277.381.092",
+    "name": "PMJX03SO",
+    "family": "J12",
+    "die_area_mm2": 23.4,
+    "package": "Bare-Die",
+    "special_start_year": null,
+    "technologies": []
+  },
+  {
+    "ttnr": "1277.381.075",
+    "name": "PMJX04SO",
+    "family": "J12",
+    "die_area_mm2": 25,
+    "package": "Bare-Die",
+    "special_start_year": null,
+    "technologies": []
+  },
+  {
+    "ttnr": "1277.381.076",
+    "name": "PMJX05SO",
+    "family": "J12",
+    "die_area_mm2": 28.45,
+    "package": "Bare-Die",
+    "special_start_year": null,
+    "technologies": []
+  },
+  {
+    "ttnr": "1277.381.068",
+    "name": "PMJX06SO",
+    "family": "J12",
+    "die_area_mm2": 31.1,
+    "package": "Bare-Die",
+    "special_start_year": null,
+    "technologies": []
+  },
+  {
+    "ttnr": "1277.381.090",
+    "name": "PMJX07SO",
+    "family": "J12",
+    "die_area_mm2": 25,
+    "package": "Bare-Die",
+    "special_start_year": null,
+    "technologies": []
+  },
+  {
+    "ttnr": "D.3.4.004.EVOB",
+    "name": "PMJX07SU",
+    "family": "J12",
+    "die_area_mm2": 25,
+    "package": "Bare-Die",
+    "special_start_year": null,
+    "technologies": []
+  },
+  {
+    "ttnr": "1277.381.077",
+    "name": "PMJX08SO",
+    "family": "J12",
+    "die_area_mm2": 22,
+    "package": "Bare-Die",
+    "special_start_year": null,
+    "technologies": []
+  },
+  {
+    "ttnr": "1277.381.093",
+    "name": "PMJX11SO",
+    "family": "J12",
+    "die_area_mm2": 32.9,
+    "package": "Bare-Die",
+    "special_start_year": null,
+    "technologies": []
+  },
+  {
+    "ttnr": "1277.381.099",
+    "name": "PMJX17SO",
+    "family": "J12",
+    "die_area_mm2": 25,
+    "package": "Bare-Die",
+    "special_start_year": null,
+    "technologies": []
+  },
+  {
+    "ttnr": "1277.381.103",
+    "name": "PMJX21SO",
+    "family": "J12",
+    "die_area_mm2": 21.8,
+    "package": "Bare-Die",
+    "special_start_year": null,
+    "technologies": []
+  },
+  {
+    "ttnr": "D.3.4.014.EVOB",
+    "name": "PMJX22SO",
+    "family": "J12",
+    "die_area_mm2": 23,
+    "package": "Bare-Die",
+    "special_start_year": null,
+    "technologies": []
+  },
+  {
+    "ttnr": "0270.248.149",
+    "name": "PMJX12SE",
+    "family": "J12",
+    "die_area_mm2": 9.78,
+    "package": "Discrete (Sägerahmen)",
+    "special_start_year": null,
+    "technologies": []
+  },
+  {
+    "ttnr": "0270.248.150",
+    "name": "PMJX15SE",
+    "family": "J12",
+    "die_area_mm2": 13.32,
+    "package": "Discrete (Sägerahmen)",
+    "special_start_year": null,
+    "technologies": []
+  },
+  {
+    "ttnr": "D.3.4.009.EVOB",
+    "name": "PMJX19SD",
+    "family": "J12",
+    "die_area_mm2": 13.32,
+    "package": "Discrete (Sägerahmen)",
+    "special_start_year": null,
+    "technologies": []
+  },
+  {
+    "ttnr": "D.3.4.011.EVOB",
+    "name": "PMJX20SE",
+    "family": "J12",
+    "die_area_mm2": 6.5,
+    "package": "Discrete (Sägerahmen)",
+    "special_start_year": null,
+    "technologies": []
+  },
+  {
+    "ttnr": "251005_PMJX_17_200_Wafer_PMJX_17mm2",
+    "name": "PMJXSO_17mm2",
+    "family": "J12",
+    "die_area_mm2": 17,
+    "package": "Bare-Die",
+    "special_start_year": null,
+    "technologies": []
+  },
+  {
+    "ttnr": "251004_PMJX_20_200_Wafer_PMJX_20mm2",
+    "name": "PMJXSO_20mm2",
+    "family": "J12",
+    "die_area_mm2": 20,
+    "package": "Bare-Die",
+    "special_start_year": null,
+    "technologies": []
+  },
+  {
+    "ttnr": "1277.381.097",
+    "name": "PMJY03SO",
+    "family": "J17",
+    "die_area_mm2": 23,
+    "package": "Bare-Die",
+    "special_start_year": null,
+    "technologies": []
+  },
+  {
+    "ttnr": "D.3.5.001.EVOB",
+    "name": "PMJY06SO",
+    "family": "J17",
+    "die_area_mm2": 31.1,
+    "package": "Bare-Die",
+    "special_start_year": null,
+    "technologies": []
+  },
+  {
+    "ttnr": "D.3.5.002.EVOB",
+    "name": "PMJY07SO",
+    "family": "J17",
+    "die_area_mm2": 25,
+    "package": "Bare-Die",
+    "special_start_year": null,
+    "technologies": []
+  },
+  {
+    "ttnr": "1277.381.073",
+    "name": "PMTX01SO",
+    "family": "T12",
+    "die_area_mm2": 31,
+    "package": "Bare-Die",
+    "special_start_year": null,
+    "technologies": []
+  },
+  {
+    "ttnr": "1277.381.074",
+    "name": "PMTX13SO",
+    "family": "T12",
+    "die_area_mm2": 34,
+    "package": "Bare-Die",
+    "special_start_year": null,
+    "technologies": []
+  },
+  {
+    "ttnr": "0270.248.138",
+    "name": "PMTX04SE",
+    "family": "T12",
+    "die_area_mm2": 11.24,
+    "package": "Discrete (Sägerahmen)",
+    "special_start_year": null,
+    "technologies": []
+  },
+  {
+    "ttnr": "0270.248.138",
+    "name": "PMTX05SE",
+    "family": "T12",
+    "die_area_mm2": 31.5664,
+    "package": "Discrete (Sägerahmen)",
+    "special_start_year": null,
+    "technologies": []
+  }
+],
   "vm_yield_models": [
     {
       "id": "YM_POI",
