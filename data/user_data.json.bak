@@ -2,7 +2,7 @@
   "meta": {
     "schema_version": 2,
     "created_at": "2026-02-02T00:00:00.000Z",
-    "updated_at": "2026-02-12T10:29:46.631Z",
+    "updated_at": "2026-02-16T14:45:43.346Z",
     "note": "Base dataset. VM yield is computed via yield models. FAB/EPI/SAW/KGD/OSAT are scenario base yields."
   },
   "families": [
@@ -666,6 +666,12 @@
       "start_year": 2027,
       "end_year": 2037,
       "selected_vm_yield_model_id": "YM_POI"
+    },
+    {
+      "name": "Test 3",
+      "start_year": 2026,
+      "end_year": 2036,
+      "selected_vm_yield_model_id": "YM_POI"
     }
   ],
   "scenario_family_params": [
@@ -913,6 +919,51 @@
       "SAW": 0.99,
       "KGD": 0.98,
       "OSAT": 0.99
+    },
+    {
+      "scenario": "T27",
+      "year": 2031,
+      "FAB": null,
+      "EPI": null,
+      "SAW": null,
+      "KGD": null,
+      "OSAT": null
+    },
+    {
+      "scenario": "T27",
+      "year": 2032,
+      "FAB": null,
+      "EPI": null,
+      "SAW": null,
+      "KGD": null,
+      "OSAT": null
+    },
+    {
+      "scenario": "Test 3",
+      "year": 2026,
+      "FAB": 0.1,
+      "EPI": null,
+      "SAW": null,
+      "KGD": null,
+      "OSAT": null
+    },
+    {
+      "scenario": "Test 3",
+      "year": 2027,
+      "FAB": null,
+      "EPI": 0.94,
+      "SAW": null,
+      "KGD": null,
+      "OSAT": null
+    },
+    {
+      "scenario": "Test 3",
+      "year": 2028,
+      "FAB": null,
+      "EPI": null,
+      "SAW": 0.93,
+      "KGD": null,
+      "OSAT": null
     }
   ],
   "technologies": [
